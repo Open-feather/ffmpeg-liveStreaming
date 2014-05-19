@@ -340,7 +340,10 @@ int main()
 	}
 
 	init_ffmpeg();
-	init_decoder_webcam(&stWebPlay->ic,&stWebPlay->dec_ctx);
+	ret = init_decoder_webcam(&stWebPlay->ic,&stWebPlay->dec_ctx);
+	if(ret <0)
+		return -1;
+
 	init_filters(stWebPlay);
 	// dump the camera stream information
 	av_dump_format(stWebPlay->ic, 0, "/dev/video0", 0);	
