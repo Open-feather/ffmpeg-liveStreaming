@@ -5,25 +5,7 @@
 
 */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-#include <libavformat/avformat.h>
-#include <libavfilter/avfiltergraph.h>
-#include <libavfilter/avcodec.h>
-#include <libavfilter/buffersink.h>
-#include <libavfilter/buffersrc.h>
-#include <libavutil/avstring.h>
-#include <libswresample/swresample.h>
-#include <libavutil/opt.h>
-#include <libavutil/audio_fifo.h>
-#include <libavdevice/avdevice.h>
-#include <libavutil/imgutils.h>
-#ifdef __cplusplus
-}
-#endif
-
-
+#include "play-webcam.h"
 /*------------------------------------------------------------
 
 	H264 Encoder 
@@ -33,100 +15,89 @@ extern "C" {
 #define STREAM_WIDTH 640
 #define STREAM_FRAME_RATE 30
 #define STREAM_PIX_FMT    AV_PIX_FMT_YUV420P
-//#define STREAM_PIX_FMT    AV_PIX_FMT_YUYV422
 
-struct webPlay{
-
-	AVFormatContext	*pFormatCtx;
-	AVCodecContext  *pCodecCtx;
-	AVCodec * pCodec;
-	AVInputFormat *inputFormat;
-	AVDictionary *options;
-	AVFrame *frame;
-	AVFormatContext *oc;
-	AVStream *input_stream;
-	AVCodecContext *dec_ctx;
-	AVFilterGraph *filter_graph;
-        AVFilterContext *buffersink;
-        AVFilterContext *buffersrc;
-
-};
-
-static int video_stream_idx = -1;
-static uint8_t *video_dst_data[4] = {NULL};
-static int video_dst_linesize[4];
-static int video_dst_bufsize;
 static void dinit_filters(struct webPlay *ctx)
 {
-        avfilter_graph_free(&ctx->filter_graph);
+	avfilter_graph_free(&ctx->filter_graph);
 }
 static int init_filters(struct webPlay *ctx)
 {
-        char args[512];
-        char fd_args[512];
+	char args[512];
+	char fd_args[512];
 
-        int ret = 0;
-        int len = 0;
+	int ret = 0;
+	int len = 0;
 
-        AVFilter *buffersrc = avfilter_get_by_name("buffer");
-        AVFilter *buffersink = avfilter_get_by_name("buffersink");
-        AVFilterInOut *outputs = avfilter_inout_alloc();
-        AVFilterInOut *inputs = avfilter_inout_alloc();
-        AVBufferSinkParams *buffersink_params;
-        enum AVPixelFormat pix_fmts[] =
-        { AV_PIX_FMT_GRAY8, AV_PIX_FMT_NONE };
+	AVFilter *buffersrc = avfilter_get_by_name("buffer");
+	AVFilter *buffersink = avfilter_get_by_name("buffersink");
+	AVFilterInOut *outputs = avfilter_inout_alloc();
+	AVFilterInOut *inputs = avfilter_inout_alloc();
+	AVBufferSinkParams *buffersink_params;
+	enum AVPixelFormat pix_fmts[] =
+	{ AV_PIX_FMT_GRAY8, AV_PIX_FMT_NONE };
 
 
-        len += snprintf(fd_args, sizeof(fd_args), "format=yuv420p,scale=640:480");
+	len += snprintf(fd_args, sizeof(fd_args), "format=yuv420p,scale=640:480");
 
-        ctx->filter_graph = avfilter_graph_alloc();
-        /* buffer video source: the decoded frames from the decoder will be inserted here. */
-        snprintf(args, sizeof(args),
-                        "video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d",
-                        ctx->dec_ctx->width, ctx->dec_ctx->height, ctx->dec_ctx->pix_fmt,
-                        ctx->dec_ctx->time_base.num, ctx->dec_ctx->time_base.den,
-                        ctx->dec_ctx->sample_aspect_ratio.num,
-                        ctx->dec_ctx->sample_aspect_ratio.den);
+	ctx->filter_graph = avfilter_graph_alloc();
+	/* buffer video source: the decoded frames from the decoder will be inserted here. */
+	snprintf(args, sizeof(args),
+			"video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d",
+			ctx->dec_ctx->width, ctx->dec_ctx->height, ctx->dec_ctx->pix_fmt,
+			ctx->dec_ctx->time_base.num, ctx->dec_ctx->time_base.den,
+			ctx->dec_ctx->sample_aspect_ratio.num,
+			ctx->dec_ctx->sample_aspect_ratio.den);
 
-        ret = avfilter_graph_create_filter(&ctx->buffersrc, buffersrc, "in", args,
-        NULL, ctx->filter_graph);
-        if (ret < 0)
-        {
-                av_log(NULL, AV_LOG_ERROR, "Cannot create buffer sink\n");
-                return ret;
-        }
-        /* buffer video sink: to terminate the filter chain. */
-        buffersink_params = av_buffersink_params_alloc();
-        buffersink_params->pixel_fmts = pix_fmts;
-        ret = avfilter_graph_create_filter(&ctx->buffersink, buffersink, "out",
-        NULL, buffersink_params, ctx->filter_graph);
-        av_free(buffersink_params);
-        if (ret < 0)
-        {
-                av_log(NULL, AV_LOG_ERROR, "Cannot create buffer sink\n");
-                return ret;
-        }
+	ret = avfilter_graph_create_filter(&ctx->buffersrc, buffersrc, "in", args,
+			NULL, ctx->filter_graph);
+	if (ret < 0)
+	{
+		av_log(NULL, AV_LOG_ERROR, "Cannot create buffer sink\n");
+		return ret;
+	}
+	/* buffer video sink: to terminate the filter chain. */
+	buffersink_params = av_buffersink_params_alloc();
+	buffersink_params->pixel_fmts = pix_fmts;
+	ret = avfilter_graph_create_filter(&ctx->buffersink, buffersink, "out",
+			NULL, buffersink_params, ctx->filter_graph);
+	av_free(buffersink_params);
+	if (ret < 0)
+	{
+		av_log(NULL, AV_LOG_ERROR, "Cannot create buffer sink\n");
+		return ret;
+	}
 
-        /* Endpoints for the filter graph. */
-        outputs->name = av_strdup("in");
-        outputs->filter_ctx = ctx->buffersrc;
-        outputs->pad_idx = 0;
-        outputs->next = NULL;
+	/* Endpoints for the filter graph. */
+	outputs->name = av_strdup("in");
+	outputs->filter_ctx = ctx->buffersrc;
+	outputs->pad_idx = 0;
+	outputs->next = NULL;
 
-        inputs->name = av_strdup("out");
-        inputs->filter_ctx = ctx->buffersink;
-        inputs->pad_idx = 0;
-        inputs->next = NULL;
+	inputs->name = av_strdup("out");
+	inputs->filter_ctx = ctx->buffersink;
+	inputs->pad_idx = 0;
+	inputs->next = NULL;
 
-        if ((ret = avfilter_graph_parse_ptr(ctx->filter_graph,fd_args,
-                        &inputs, &outputs, NULL)) < 0)
-                return ret;
+	if ((ret = avfilter_graph_parse_ptr(ctx->filter_graph,fd_args,
+					&inputs, &outputs, NULL)) < 0)
+		return ret;
 
-        if ((ret = avfilter_graph_config(ctx->filter_graph, NULL)) < 0)
-                return ret;
-        return 0;
+	if ((ret = avfilter_graph_config(ctx->filter_graph, NULL)) < 0)
+		return ret;
+	return 0;
 }
 
+void init_ffmpeg(void)
+{
+	// register all the codec
+	av_register_all();
+	// register all the codec
+	avcodec_register_all();
+	// register all the devices
+	avdevice_register_all();
+	// register all filters
+	avfilter_register_all();
+}
 /* Add an output stream. */
 static AVStream *
 add_stream(AVFormatContext *oc, AVCodec **codec, enum AVCodecID codec_id)
@@ -224,36 +195,36 @@ static void dinit_encoder(AVFormatContext **oc)
 
 static int init_encoder(AVFormatContext **oc, const char* oname)
 {
-        int ret = 0;
-        char arr_string[128] = "";
-        AVOutputFormat *fmt;
-        AVCodec *audio_codec, *video_codec;
-        AVStream *vst = NULL;
-        AVStream *ast = NULL;
+	int ret = 0;
+	char arr_string[128] = "";
+	AVOutputFormat *fmt;
+	AVCodec *audio_codec, *video_codec;
+	AVStream *vst = NULL;
+	AVStream *ast = NULL;
 
 
-        /* allocate the output media context */
-        avformat_alloc_output_context2(oc, NULL, NULL, oname);
-        if (!*oc)
-        {
-                av_log(NULL, AV_LOG_ERROR, "Could not deduce output format\n");
-                return -1;
-        }
-        AVFormatContext *loc = *oc;
-        fmt = loc->oformat;
-        if (fmt->video_codec != AV_CODEC_ID_NONE)
-        {
-                vst = add_stream(loc, &video_codec, fmt->video_codec);
-        }
-
-        if (fmt->audio_codec != AV_CODEC_ID_NONE)
-        {
-                ast = add_stream(loc, &audio_codec, fmt->audio_codec);
-        }
-        if (!ast && !vst)
-        {
-                return -1;
-        }
+	/* allocate the output media context */
+	avformat_alloc_output_context2(oc, NULL, NULL, oname);
+	if (!*oc)
+	{
+		av_log(NULL, AV_LOG_ERROR, "Could not deduce output format\n");
+		return -1;
+	}
+	AVFormatContext *loc = *oc;
+	fmt = loc->oformat;
+	if (fmt->video_codec != AV_CODEC_ID_NONE)
+	{
+		vst = add_stream(loc, &video_codec, fmt->video_codec);
+	}
+	fmt->audio_codec = AV_CODEC_ID_NONE;
+	if (fmt->audio_codec != AV_CODEC_ID_NONE)
+	{
+		ast = add_stream(loc, &audio_codec, fmt->audio_codec);
+	}
+	if (!ast && !vst)
+	{
+		return -1;
+	}
 
 	if(vst)
 	{
@@ -273,7 +244,7 @@ static int init_encoder(AVFormatContext **oc, const char* oname)
 		ret = avcodec_open2(ast->codec, audio_codec, NULL);
 		if (ret < 0)
 		{
-			av_log(NULL, AV_LOG_ERROR, "Could not open video codec: %s\n",
+			av_log(NULL, AV_LOG_ERROR, "Could not open audio codec: %s\n",
 					av_make_error_string(arr_string, 128, ret));
 			return -1;
 		}
@@ -345,67 +316,6 @@ static int write_video_frame(AVFormatContext *oc, AVStream *st, AVFrame *frame)
         return -1;
 }
 
-int h264_encoder_init( struct webPlay* stWebPlay)
-{
-
-	int codecId = AV_CODEC_ID_H264;
-	int ret = 0;
-	//avcodec_init();
-	//avcodec_register_all();
-	stWebPlay->pCodec = avcodec_find_encoder(CODEC_ID_H264);
-	if(!stWebPlay->pCodec)
-	{
-		fprintf(stderr,"Error : in finding encoder for H264\n");
-		return -1;
-	}	
-	
-
-	stWebPlay->pCodecCtx = avcodec_alloc_context3(stWebPlay->pCodec);	
-	if(!stWebPlay->pCodecCtx)
-	{
-		fprintf(stderr,"Error : in codec context allocation\n");
-		return -1;
-	}
-	
-	stWebPlay->pCodecCtx->bit_rate  = 400000;       // bitrate 400kbps
-	stWebPlay->pCodecCtx->width     = 640;          // video width
-	stWebPlay->pCodecCtx->height    = 480;          // video height
-	stWebPlay->pCodecCtx->time_base = (AVRational){1,25};  // framerate
-	stWebPlay->pCodecCtx->gop_size  = 10;           // Intra frame
-	stWebPlay->pCodecCtx->max_b_frames = 1;	
-	stWebPlay->pCodecCtx->pix_fmt      = AV_PIX_FMT_YUV420P; 
-	
-	// only for h264
-	//av_opt_set(stWebPlay->pCodecCtx->priv_data, "preset", "slow", 0);
-
-	if(avcodec_open2(stWebPlay->pCodecCtx, stWebPlay->pCodec, NULL) < 0)
-	{
-		fprintf(stderr,"Error in open codec \n");
-		return -1;
-	}
-	
-	stWebPlay->frame = avcodec_alloc_frame();	
-	if(!stWebPlay->frame)
-	{
-		fprintf(stderr,"Error in avcodec alloc frame\n");
-		return -1;
-	}
-
-	stWebPlay->frame->format  = stWebPlay->pCodecCtx->pix_fmt;
-	stWebPlay->frame->width   = stWebPlay->pCodecCtx->width;
-	stWebPlay->frame-> height = stWebPlay->pCodecCtx->height;
-
-	ret = av_image_alloc( stWebPlay->frame->data, stWebPlay->frame->linesize, stWebPlay->pCodecCtx->width, stWebPlay->pCodecCtx->height,stWebPlay->pCodecCtx->pix_fmt, 32);
-        if (ret < 0) 
-	{
-		fprintf(stderr,"Error in image allocation\n");
-		return -1;
-        }
-	printf("Encoder init complete\n");
-	return 0;
-}
-
-
 /*----------------------------------------------------------
 	
 	Main
@@ -415,13 +325,7 @@ int h264_encoder_init( struct webPlay* stWebPlay)
 int main()
 {
 	
-	int ret = 0, i = 0, numBytes = 0;
-	char *buffer;
-	FILE* tempFile;
-	int vid_size = 0;
-	AVStream *st;
-	AVCodecContext *dec_ctx = NULL;
-	AVCodec *dec = NULL;
+	int ret = 0;
 	AVPacket packet;
 
 	// structure with ffmpeg variables
@@ -435,106 +339,27 @@ int main()
 		return -1;
 	}
 
-	// register all the codec
-	av_register_all();
-	// register all the codec
-        avcodec_register_all();
-	// register all the devices
-	avdevice_register_all();
-	// register all filters
-	avfilter_register_all();
-
-	// get the camera input format form v4l2
-	stWebPlay->inputFormat = av_find_input_format("v4l2");
-
-	// Temp file to dump the video output of camera
-	tempFile = fopen("cameradump.yuv", "w");
-	if(tempFile == NULL)
-	{
-		fprintf(stderr,"ERROR in opening output file\n");
-		return -1;
-	}	
-        // set avdict option
-	stWebPlay->options = NULL;
-	// allocate contex
-	stWebPlay->pFormatCtx = avformat_alloc_context();
-	if(stWebPlay->pFormatCtx == NULL)
-	{
-		fprintf(stderr,"could not allocate avformat\n");
-		return -1;
-	}
-
-	// set the frame rate
-	av_dict_set(&stWebPlay->options, "framerate", "5", 0); 
-	// open the camera to get the data
-	ret = avformat_open_input(&stWebPlay->pFormatCtx, "/dev/video0", stWebPlay->inputFormat, &stWebPlay->options);
-	if(ret == -1)
-	{
-		fprintf(stderr,"Error in avformat open input ret : %d\n", ret);
-		return -1;
-	}
-
-	// get the camera stream information
-	if(avformat_find_stream_info(stWebPlay->pFormatCtx,NULL) < 0)   
-        {
-                fprintf(stderr,"Error in finding stream infon");
-                return -13;
-        }
-	ret = av_find_best_stream(stWebPlay->pFormatCtx,AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0); 
-	if (ret < 0)
-	{
-		fprintf(stderr, "Could not find video stream in camera\n");
-		return ret;
-	}
-	st = stWebPlay->pFormatCtx->streams[ret];
-	dec_ctx = st->codec;
-	dec = avcodec_find_decoder(dec_ctx->codec_id);
-	ret = avcodec_open2(dec_ctx, dec,NULL);
-	if (ret < 0)
-	{
-		fprintf(stderr, "Could not find video stream in camera\n");
-		return ret;
-	}
-	stWebPlay->dec_ctx = dec_ctx;
+	init_ffmpeg();
+	init_decoder_webcam(&stWebPlay->ic,&stWebPlay->dec_ctx);
 	init_filters(stWebPlay);
-	/* allocate image where the decoded image will be put */
-	ret = av_image_alloc(video_dst_data, video_dst_linesize,
-		dec_ctx->width, dec_ctx->height,
-		dec_ctx->pix_fmt, 1); 
-	if (ret < 0)
-	{
-		fprintf(stderr, "Could not allocate raw video buffer\n");
-		return ret;
-        }   
-        video_dst_bufsize = ret;
-
 	// dump the camera stream information
-	av_dump_format(stWebPlay->pFormatCtx, 0, "/dev/video0", 0);	
+	av_dump_format(stWebPlay->ic, 0, "/dev/video0", 0);	
 
-	init_encoder(&stWebPlay->oc,"some.h264");
-	ret = h264_encoder_init(stWebPlay);
+	ret = init_encoder(&stWebPlay->oc,"some.m3u8");
 	if(ret < 0)
 	{
 		printf("Error in encoder init\n");
 		return -1;
 	}
-#if 0
-	int res;
-        int frameFinished;
-	
-	stWebPlay->frame->data = malloc(vid_size);
-	if(stWebPlay->frame->data == NULL)
-	{
-		printf("Error in data allocation\n");
-		return -1;
-	}
-#endif
+
 	long long size = 0;
 	AVFrame *InFrame = av_frame_alloc();
 	AVFrame *OutFrame = av_frame_alloc();
+	OutFrame->pts = 0;
 	int got_frame;
-        while(ret = av_read_frame(stWebPlay->pFormatCtx,&packet)>=0)
+	while( (ret = av_read_frame(stWebPlay->ic,&packet) ) >= 0)
 	{
+		AVCodecContext *dec_ctx = stWebPlay->ic->streams[0]->codec;
 		ret = avcodec_decode_video2(dec_ctx, InFrame, &got_frame,
 				&packet);
 		if (ret < 0)
@@ -542,6 +367,8 @@ int main()
 			av_log(NULL, AV_LOG_ERROR, "Error decoding video\n");
 			return ret;
 		}
+		if(!got_frame)
+			continue;
 		if (av_buffersrc_add_frame_flags(stWebPlay->buffersrc, InFrame,
 					AV_BUFFERSRC_FLAG_KEEP_REF) < 0)
 		{
@@ -565,22 +392,17 @@ int main()
 				ret = -1;
 				break;
 			}
+			OutFrame->pts = stWebPlay->cur_pts;
 			write_video_frame(stWebPlay->oc,stWebPlay->oc->streams[0],OutFrame);
-
-			//	fwrite(packet.data, 1,packet.size, tempFile);
-
-			//	memcpy(stWebPlay->frame->data, packet.data, vid_size);
-			stWebPlay->frame->pts = packet.pts;
-			//		printf("Encode video here to h264\n");
-			if(size > (1024 * 1024 * 1024))
-				break;
+			stWebPlay->cur_pts += av_rescale_q(1, stWebPlay->oc->streams[0]->codec->time_base,stWebPlay->oc->streams[0]->time_base);
+			
 			size += packet.size;
 			printf("getting frames\n");
 			//h264_encoder(stWebPlay);
+			av_frame_unref(OutFrame);
 		}
-
-		//break;
-			
+		av_frame_unref(InFrame);
+		if(size > (1024 * 1024 *100))
+			break;
 	}
-	fclose(tempFile);
 }
