@@ -6,11 +6,7 @@
 */
 
 #include "play-webcam.h"
-/*------------------------------------------------------------
 
-	H264 Encoder 
-
-------------------------------------------------------------*/
 #define STREAM_HEIGHT 480
 #define STREAM_WIDTH 640
 #define STREAM_FRAME_RATE 30

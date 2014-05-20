@@ -1,7 +1,7 @@
 #ifndef _PLAY_WEBCAM
 #define _PLAY_WEBCAM
 
-
+#include "platform.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
