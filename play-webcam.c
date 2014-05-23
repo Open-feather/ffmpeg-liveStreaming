@@ -320,7 +320,7 @@ static int write_video_frame(AVFormatContext *oc, AVStream *st, AVFrame *frame)
 
 int main()
 {
-	
+	unsigned long long temp_pts = 0;
 	int ret = 0;
 	AVPacket packet;
 
@@ -391,17 +391,19 @@ int main()
 				ret = -1;
 				break;
 			}
-			OutFrame->pts = stWebPlay->cur_pts;
+			OutFrame->pts = temp_pts;
+			//OutFrame->pts = stWebPlay->cur_pts;
 			write_video_frame(stWebPlay->oc,stWebPlay->oc->streams[0],OutFrame);
 			stWebPlay->cur_pts += av_rescale_q(1, stWebPlay->oc->streams[0]->codec->time_base,stWebPlay->oc->streams[0]->time_base);
-			
+			temp_pts += 9000;
+
 			size += packet.size;
 			printf("getting frames\n");
 			//h264_encoder(stWebPlay);
 			av_frame_unref(OutFrame);
 		}
 		av_frame_unref(InFrame);
-		if(size > (1024 * 1024 *100))
+		if(size > (1024 * 1024 *1000))
 			break;
 	}
 }

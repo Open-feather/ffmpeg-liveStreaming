@@ -9,7 +9,7 @@ int init_decoder_webcam(AVFormatContext **pFormatCtx,AVCodecContext **dec_ctx)
 	int ret = 0;
 
 	// get the camera input format form v4l2
-	inputFormat = av_find_input_format("v4l2");
+	inputFormat = av_find_input_format(CAM_DRIVER);
 
     // set avdict option
 	options = NULL;
@@ -24,7 +24,7 @@ int init_decoder_webcam(AVFormatContext **pFormatCtx,AVCodecContext **dec_ctx)
 	// set the frame rate
 	av_dict_set(&options, "framerate", "5", 0); 
 	// open the camera to get the data
-	ret = avformat_open_input(pFormatCtx, "/dev/video0", inputFormat, &options);
+	ret = avformat_open_input(pFormatCtx, CAM_DEVICE_NAME, inputFormat, &options);
 	if(ret < 0)
 	{
 		fprintf(stderr,"Error in avformat open input ret : %d\n", ret);
