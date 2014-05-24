@@ -22,7 +22,7 @@ int init_decoder_webcam(AVFormatContext **pFormatCtx,AVCodecContext **dec_ctx)
 	}
 
 	// set the frame rate
-	av_dict_set(&options, "framerate", "5", 0); 
+	av_dict_set(&options, "framerate", "15", 0); 
 	// open the camera to get the data
 	ret = avformat_open_input(pFormatCtx, CAM_DEVICE_NAME, inputFormat, &options);
 	if(ret < 0)

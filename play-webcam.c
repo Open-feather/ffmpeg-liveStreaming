@@ -9,7 +9,7 @@
 
 #define STREAM_HEIGHT 480
 #define STREAM_WIDTH 640
-#define STREAM_FRAME_RATE 30
+#define STREAM_FRAME_RATE 15
 #define STREAM_PIX_FMT    AV_PIX_FMT_YUV420P
 
 static void dinit_filters(struct webPlay *ctx)
@@ -320,7 +320,6 @@ static int write_video_frame(AVFormatContext *oc, AVStream *st, AVFrame *frame)
 
 int main()
 {
-	unsigned long long temp_pts = 0;
 	int ret = 0;
 	AVPacket packet;
 
@@ -344,7 +343,7 @@ int main()
 	// dump the camera stream information
 	av_dump_format(stWebPlay->ic, 0, "/dev/video0", 0);	
 
-	ret = init_encoder(&stWebPlay->oc,"some.m3u8");
+	ret = init_encoder(&stWebPlay->oc,"some.ts");
 	if(ret < 0)
 	{
 		printf("Error in encoder init\n");
@@ -391,11 +390,9 @@ int main()
 				ret = -1;
 				break;
 			}
-			OutFrame->pts = temp_pts;
-			//OutFrame->pts = stWebPlay->cur_pts;
+			OutFrame->pts = stWebPlay->cur_pts;
 			write_video_frame(stWebPlay->oc,stWebPlay->oc->streams[0],OutFrame);
 			stWebPlay->cur_pts += av_rescale_q(1, stWebPlay->oc->streams[0]->codec->time_base,stWebPlay->oc->streams[0]->time_base);
-			temp_pts += 9000;
 
 			size += packet.size;
 			printf("getting frames\n");
