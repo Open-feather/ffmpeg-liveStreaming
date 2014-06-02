@@ -312,7 +312,7 @@ static int write_video_frame(AVFormatContext *oc, AVStream *st, AVFrame *frame)
         return -1;
 }
 
-int cap_stream(char*path)
+int cap_stream(const char*path)
 {
 	int ret = 0;
 	AVPacket packet;

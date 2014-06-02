@@ -5,6 +5,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+#define __STDC_CONSTANT_MACROS
 #include <libavformat/avformat.h>
 #include <libavfilter/avfiltergraph.h>
 #include <libavfilter/avcodec.h>
@@ -38,6 +39,13 @@ struct webPlay{
 };
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+int cap_stream(const char*path);
+#ifdef __cplusplus
+}
+#endif
 #endif
 
 
