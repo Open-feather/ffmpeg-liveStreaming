@@ -5,8 +5,8 @@
 
 */
 
-#include "play-webcam.h"
-
+#include "stream.h"
+#include "decoder.h"
 #define STREAM_HEIGHT 480
 #define STREAM_WIDTH 640
 #define STREAM_FRAME_RATE 15
@@ -312,13 +312,7 @@ static int write_video_frame(AVFormatContext *oc, AVStream *st, AVFrame *frame)
         return -1;
 }
 
-/*----------------------------------------------------------
-	
-	Main
-	
-------------------------------------------------------*/
-
-int main()
+int cap_stream(char*path)
 {
 	int ret = 0;
 	AVPacket packet;
@@ -343,7 +337,7 @@ int main()
 	// dump the camera stream information
 	av_dump_format(stWebPlay->ic, 0, "/dev/video0", 0);	
 
-	ret = init_encoder(&stWebPlay->oc,"some.ts");
+	ret = init_encoder(&stWebPlay->oc,path);
 	if(ret < 0)
 	{
 		printf("Error in encoder init\n");
@@ -403,4 +397,5 @@ int main()
 		if(size > (1024 * 1024 *1000))
 			break;
 	}
+	return 0;
 }

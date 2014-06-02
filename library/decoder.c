@@ -1,4 +1,4 @@
-#include "play-webcam.h"
+#include "stream.h"
 
 int init_decoder_webcam(AVFormatContext **pFormatCtx,AVCodecContext **dec_ctx)
 {

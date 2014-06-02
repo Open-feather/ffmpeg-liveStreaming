@@ -37,7 +37,6 @@ struct webPlay{
 
 };
 
-int init_decoder_webcam(AVFormatContext **pFormatCtx,AVCodecContext **dec_ctx);
 
 #endif
 
