@@ -1,6 +1,6 @@
 #include "stream.h"
 
-int init_decoder_webcam(AVFormatContext **pFormatCtx,AVCodecContext **dec_ctx)
+int init_decoder_webcam(AVFormatContext **pFormatCtx, AVCodecContext **dec_ctx)
 {
 	AVInputFormat *inputFormat;
 	AVDictionary *options;
@@ -8,19 +8,20 @@ int init_decoder_webcam(AVFormatContext **pFormatCtx,AVCodecContext **dec_ctx)
 	AVCodec *dec = NULL;
 	int ret = 0;
 
-	// get the camera input format form v4l2
+	// get the camera input format from 
 	inputFormat = av_find_input_format(CAM_DRIVER);
 
-    // set avdict option
-	options = NULL;
 	// allocate contex
 	*pFormatCtx = avformat_alloc_context();
 	if(*pFormatCtx == NULL)
 	{
 		fprintf(stderr,"could not allocate avformat\n");
-		return -1;
+		goto end;
+		ret = -1;
 	}
 
+	// set avdict option
+	options = NULL;
 	// set the frame rate
 	av_dict_set(&options, "framerate", "15", 0); 
 	// open the camera to get the data
@@ -33,7 +34,7 @@ int init_decoder_webcam(AVFormatContext **pFormatCtx,AVCodecContext **dec_ctx)
 
 	// get the camera stream information
 	if(avformat_find_stream_info(*pFormatCtx,NULL) < 0)   
-    {
+	{
 		fprintf(stderr,"Error in finding stream infon");
 		return -13;
 	}
@@ -54,5 +55,8 @@ int init_decoder_webcam(AVFormatContext **pFormatCtx,AVCodecContext **dec_ctx)
 		return ret;
 	}
 	return 0;
+end:
+avformat_close_input(pFormatCtx);
+
 }
 

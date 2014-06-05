@@ -27,6 +27,8 @@ struct webPlay{
 	AVFormatContext	*ic;
 	AVCodecContext  *pCodecCtx;
 	AVCodec * pCodec;
+	AVFrame *InFrame;
+	AVFrame *OutFrame;
 	AVFrame *frame;
 	AVFormatContext *oc;
 	AVStream *input_stream;
@@ -42,7 +44,9 @@ struct webPlay{
 #ifdef __cplusplus
 extern "C" {
 #endif
-int cap_stream(const char*path);
+int start_capture(void *ctx);
+void *init_capture(const char*path);
+void stop_capture(void *ctx);
 #ifdef __cplusplus
 }
 #endif

@@ -85,7 +85,7 @@ static int init_filters(struct webPlay *ctx)
 
 void init_ffmpeg(void)
 {
-	// register all the codec
+	// register all common ffmpeg things
 	av_register_all();
 	// register all the codec
 	avcodec_register_all();
@@ -94,6 +94,8 @@ void init_ffmpeg(void)
 	// register all filters
 	avfilter_register_all();
 }
+
+
 /* Add an output stream. */
 static AVStream *
 add_stream(AVFormatContext *oc, AVCodec **codec, enum AVCodecID codec_id)
@@ -163,6 +165,7 @@ add_stream(AVFormatContext *oc, AVCodec **codec, enum AVCodecID codec_id)
         if (oc->oformat->flags & AVFMT_GLOBALHEADER)
                 c->flags |= CODEC_FLAG_GLOBAL_HEADER;
 
+
         return st;
 }
 static void dinit_encoder(AVFormatContext **oc)
@@ -204,7 +207,8 @@ static int init_encoder(AVFormatContext **oc, const char* oname)
 	if (!*oc)
 	{
 		av_log(NULL, AV_LOG_ERROR, "Could not deduce output format\n");
-		return -1;
+		ret = -1;
+		goto end;
 	}
 	AVFormatContext *loc = *oc;
 	fmt = loc->oformat;
@@ -219,7 +223,8 @@ static int init_encoder(AVFormatContext **oc, const char* oname)
 	}
 	if (!ast && !vst)
 	{
-		return -1;
+		ret = -1;
+		goto end;
 	}
 
 	if(vst)
@@ -230,7 +235,8 @@ static int init_encoder(AVFormatContext **oc, const char* oname)
 		{
 			av_log(NULL, AV_LOG_ERROR, "Could not open video codec: %s\n",
 					av_make_error_string(arr_string, 128, ret));
-			return -1;
+			ret = -1;
+			goto end;
 		}
 	}
 	if(ast)
@@ -242,32 +248,37 @@ static int init_encoder(AVFormatContext **oc, const char* oname)
 		{
 			av_log(NULL, AV_LOG_ERROR, "Could not open audio codec: %s\n",
 					av_make_error_string(arr_string, 128, ret));
-			return -1;
+			ret = -1;
+			goto end;
 		}
 	}
-        /* open the output file, if needed */
-        if (!(fmt->flags & AVFMT_NOFILE))
-        {
-                ret = avio_open(&loc->pb, oname, AVIO_FLAG_WRITE);
-                if (ret < 0)
-                {
-                        av_log(NULL, AV_LOG_ERROR, "Could not open '%s': %s\n", oname,
-                                        av_make_error_string(arr_string, 128, ret));
-                        //xxx decide kya karna hai
-                        return -1;
-                }
-        }
+	/* open the output file, if needed */
+	if (!(fmt->flags & AVFMT_NOFILE))
+	{
+		ret = avio_open(&loc->pb, oname, AVIO_FLAG_WRITE);
+		if (ret < 0)
+		{
+			av_log(NULL, AV_LOG_ERROR, "Could not open '%s': %s\n", oname,
+					av_make_error_string(arr_string, 128, ret));
+			ret = -1;
+			goto end;
+		}
+	}
 	av_dump_format(loc, 0, "output", 1);
-        /* Write the stream header, if any. */
-        ret = avformat_write_header(loc, NULL);
-        if (ret < 0)
-        {
-                av_log(NULL, AV_LOG_ERROR, "Error occurred when writing header: %s\n",
-                                av_make_error_string(arr_string, 128, ret));
-                dinit_encoder(oc);
-        }
+	/* Write the stream header, if any. */
+	ret = avformat_write_header(loc, NULL);
+	if (ret < 0)
+	{
+		av_log(NULL, AV_LOG_ERROR, "Error occurred when writing header: %s\n",
+				av_make_error_string(arr_string, 128, ret));
+		ret = -1;
+		goto end;
+	}
 
-        return ret;
+end:
+        if(ret < 0)  
+		dinit_encoder(oc);
+	return ret;
 }
 
 /**
@@ -312,11 +323,22 @@ static int write_video_frame(AVFormatContext *oc, AVStream *st, AVFrame *frame)
         return -1;
 }
 
-int cap_stream(const char*path)
+void stop_capture(void *ctx)
 {
-	int ret = 0;
-	AVPacket packet;
+	struct webPlay *stWebPlay = (struct webPlay *)ctx;
+	if (!stWebPlay)
+	{
+		dinit_filters(stWebPlay);
+		av_frame_free(&stWebPlay->OutFrame);
+		av_frame_free(&stWebPlay->InFrame);
+		free(stWebPlay);
+	}
+}
 
+void *init_capture(const char*path)
+{
+
+	int ret = 0;
 	// structure with ffmpeg variables
 	struct webPlay *stWebPlay;
 
@@ -325,43 +347,61 @@ int cap_stream(const char*path)
 	if(stWebPlay == NULL)
 	{
 		fprintf(stderr,"Error in web play struct alloc\n");
-		return -1;
+		ret =-1;
+		goto end;
 	}
+	memset(stWebPlay, 0, sizeof(*stWebPlay));
 
 	init_ffmpeg();
-	ret = init_decoder_webcam(&stWebPlay->ic,&stWebPlay->dec_ctx);
+	ret = init_decoder_webcam(&stWebPlay->ic, &stWebPlay->dec_ctx);
 	if(ret <0)
-		return -1;
+	{
+		ret =-1;
+		goto end;
+	}
 
 	init_filters(stWebPlay);
-	// dump the camera stream information
-	av_dump_format(stWebPlay->ic, 0, "/dev/video0", 0);	
 
 	ret = init_encoder(&stWebPlay->oc,path);
 	if(ret < 0)
 	{
 		printf("Error in encoder init\n");
-		return -1;
+		ret =-1;
+		goto end;
 	}
 
-	long long size = 0;
-	AVFrame *InFrame = av_frame_alloc();
-	AVFrame *OutFrame = av_frame_alloc();
-	OutFrame->pts = 0;
+	stWebPlay->InFrame          = av_frame_alloc();
+	stWebPlay->OutFrame         = av_frame_alloc();
+	stWebPlay->OutFrame->pts               = 0;
+end:
+	if(ret < 0)
+	{
+		stop_capture((void*)stWebPlay);
+		return NULL;
+	}
+	return stWebPlay;
+}
+
+
+int start_capture(void *ctx)
+{
+	struct webPlay *stWebPlay = (struct webPlay *)ctx;
 	int got_frame;
+	int ret;
+	AVPacket packet = { 0 };
 	while( (ret = av_read_frame(stWebPlay->ic,&packet) ) >= 0)
 	{
 		AVCodecContext *dec_ctx = stWebPlay->ic->streams[0]->codec;
-		ret = avcodec_decode_video2(dec_ctx, InFrame, &got_frame,
+		ret = avcodec_decode_video2(dec_ctx, stWebPlay->InFrame, &got_frame,
 				&packet);
 		if (ret < 0)
 		{
 			av_log(NULL, AV_LOG_ERROR, "Error decoding video\n");
-			return ret;
+			goto end;
 		}
 		if(!got_frame)
 			continue;
-		if (av_buffersrc_add_frame_flags(stWebPlay->buffersrc, InFrame,
+		if (av_buffersrc_add_frame_flags(stWebPlay->buffersrc, stWebPlay->InFrame,
 					AV_BUFFERSRC_FLAG_KEEP_REF) < 0)
 		{
 			av_log(NULL, AV_LOG_ERROR,
@@ -372,7 +412,7 @@ int cap_stream(const char*path)
 		while (1)
 		{
 
-			ret = av_buffersink_get_frame(stWebPlay->buffersink, OutFrame);
+			ret = av_buffersink_get_frame(stWebPlay->buffersink, stWebPlay->OutFrame);
 			if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
 			{
 				ret = 0;
@@ -384,18 +424,20 @@ int cap_stream(const char*path)
 				ret = -1;
 				break;
 			}
-			OutFrame->pts = stWebPlay->cur_pts;
-			write_video_frame(stWebPlay->oc,stWebPlay->oc->streams[0],OutFrame);
+			stWebPlay->OutFrame->pts = stWebPlay->cur_pts;
+			write_video_frame(stWebPlay->oc,stWebPlay->oc->streams[0],stWebPlay->OutFrame);
 			stWebPlay->cur_pts += av_rescale_q(1, stWebPlay->oc->streams[0]->codec->time_base,stWebPlay->oc->streams[0]->time_base);
 
-			size += packet.size;
 			printf("getting frames\n");
 			//h264_encoder(stWebPlay);
-			av_frame_unref(OutFrame);
+			av_frame_unref(stWebPlay->OutFrame);
 		}
-		av_frame_unref(InFrame);
-		if(size > (1024 * 1024 *1000))
-			break;
+		av_frame_unref(stWebPlay->InFrame);
 	}
+end:    if(ret <0)
+		stop_capture(stWebPlay);
 	return 0;
 }
+
+
+
