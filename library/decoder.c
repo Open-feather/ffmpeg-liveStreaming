@@ -54,9 +54,10 @@ int init_decoder_webcam(AVFormatContext **pFormatCtx, AVCodecContext **dec_ctx)
 		fprintf(stderr, "Could not find video stream in camera\n");
 		return ret;
 	}
-	return 0;
 end:
-avformat_close_input(pFormatCtx);
+	if(ret < 0)	
+		avformat_close_input(pFormatCtx);
+	return ret;
 
 }
 

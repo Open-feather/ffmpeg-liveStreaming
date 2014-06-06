@@ -200,6 +200,8 @@ static int init_encoder(AVFormatContext **oc, const char* oname)
 	AVCodec *audio_codec, *video_codec;
 	AVStream *vst = NULL;
 	AVStream *ast = NULL;
+	AVFormatContext *loc;
+	AVDictionary *options;
 
 
 	/* allocate the output media context */
@@ -210,7 +212,18 @@ static int init_encoder(AVFormatContext **oc, const char* oname)
 		ret = -1;
 		goto end;
 	}
-	AVFormatContext *loc = *oc;
+	//save output context in local context
+	loc = *oc;
+	
+	// set wrap around option in hls
+	options = NULL;
+	av_dict_set(&options, "hls_wrap", "5", 0);
+	ret = av_opt_set_dict2(loc->priv_data, &options, AV_OPT_SEARCH_CHILDREN);
+	if(ret < 0)
+	{
+		av_log(NULL, AV_LOG_WARNING, "unable to wrap hls segment\n");
+	}
+ 
 	fmt = loc->oformat;
 	if (fmt->video_codec != AV_CODEC_ID_NONE)
 	{
