@@ -1,5 +1,12 @@
 #include "stream.h"
 
+void dinit_decoder_webcam(AVFormatContext **pFormatCtx,AVCodecContext *dec_ctx)
+{
+	if (dec_ctx)
+                avcodec_close(dec_ctx);
+
+	avformat_close_input(pFormatCtx);
+}
 int init_decoder_webcam(AVFormatContext **pFormatCtx, AVCodecContext **dec_ctx)
 {
 	AVInputFormat *inputFormat;
@@ -56,8 +63,10 @@ int init_decoder_webcam(AVFormatContext **pFormatCtx, AVCodecContext **dec_ctx)
 	}
 end:
 	if(ret < 0)	
+	{
+		dinit_decoder_webcam(pFormatCtx,*dec_ctx);
 		avformat_close_input(pFormatCtx);
+	}
 	return ret;
 
 }
-

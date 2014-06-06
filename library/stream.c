@@ -342,6 +342,8 @@ void stop_capture(void *ctx)
 	if (stWebPlay)
 	{
 		dinit_filters(stWebPlay);
+		dinit_decoder_webcam(&stWebPlay->ic, stWebPlay->dec_ctx);
+		dinit_encoder(&stWebPlay->oc);
 		av_frame_free(&stWebPlay->OutFrame);
 		av_frame_free(&stWebPlay->InFrame);
 		free(stWebPlay);
@@ -451,6 +453,7 @@ int start_capture(void *ctx)
 			av_frame_unref(stWebPlay->OutFrame);
 		}
 		av_frame_unref(stWebPlay->InFrame);
+		av_free_packet(&packet);
 	}
 end:    if(ret <0)
 		stop_capture(stWebPlay);
