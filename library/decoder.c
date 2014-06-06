@@ -28,8 +28,8 @@ int init_decoder_webcam(AVFormatContext **pFormatCtx, AVCodecContext **dec_ctx)
 	ret = avformat_open_input(pFormatCtx, CAM_DEVICE_NAME, inputFormat, &options);
 	if(ret < 0)
 	{
-		fprintf(stderr,"Error in avformat open input ret : %d\n", ret);
-		return -1;
+		goto end;
+		ret = -1;
 	}
 
 	// get the camera stream information

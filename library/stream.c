@@ -339,7 +339,7 @@ static int write_video_frame(AVFormatContext *oc, AVStream *st, AVFrame *frame)
 void stop_capture(void *ctx)
 {
 	struct webPlay *stWebPlay = (struct webPlay *)ctx;
-	if (!stWebPlay)
+	if (stWebPlay)
 	{
 		dinit_filters(stWebPlay);
 		av_frame_free(&stWebPlay->OutFrame);
@@ -402,6 +402,11 @@ int start_capture(void *ctx)
 	int got_frame;
 	int ret;
 	AVPacket packet = { 0 };
+	if(!stWebPlay)
+	{
+		ret = -1;
+		goto end;
+	}
 	while( (ret = av_read_frame(stWebPlay->ic,&packet) ) >= 0)
 	{
 		AVCodecContext *dec_ctx = stWebPlay->ic->streams[0]->codec;
@@ -449,7 +454,7 @@ int start_capture(void *ctx)
 	}
 end:    if(ret <0)
 		stop_capture(stWebPlay);
-	return 0;
+	return ret;
 }
 
 
