@@ -173,11 +173,12 @@ static void dinit_encoder(AVFormatContext **oc)
         AVOutputFormat *fmt;
         AVStream *st;
         AVFormatContext *loc = *oc;
+		unsigned int i;
         fmt = loc->oformat;
 
         av_write_trailer(loc);
         /* Close each codec. */
-        for (unsigned int i = 0; i < loc->nb_streams; i++)
+        for (i = 0; i < loc->nb_streams; i++)
         {
                 st = loc->streams[i];
                 avcodec_close(st->codec);
