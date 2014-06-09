@@ -337,7 +337,7 @@ static int write_video_frame(AVFormatContext *oc, AVStream *st, AVFrame *frame)
         return -1;
 }
 
-void stop_capture(void *ctx)
+EXPORT void stop_capture(void *ctx)
 {
 	struct webPlay *stWebPlay = (struct webPlay *)ctx;
 	if (stWebPlay)
@@ -351,7 +351,7 @@ void stop_capture(void *ctx)
 	}
 }
 
-void *init_capture(const char*path)
+EXPORT void *init_capture(const char*path)
 {
 
 	int ret = 0;
@@ -399,7 +399,7 @@ end:
 }
 
 
-int start_capture(void *ctx)
+EXPORT int start_capture(void *ctx)
 {
 	struct webPlay *stWebPlay = (struct webPlay *)ctx;
 	int got_frame;

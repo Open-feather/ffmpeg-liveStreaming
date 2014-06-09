@@ -1,5 +1,5 @@
 #include <iostream>
-#include "stream.h"
+#include "lib_wrapper.h"
 using namespace std;
 int main(int argc, char*argv[])
 {
