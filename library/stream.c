@@ -173,7 +173,11 @@ static void dinit_encoder(AVFormatContext **oc)
         AVOutputFormat *fmt;
         AVStream *st;
         AVFormatContext *loc = *oc;
-		unsigned int i;
+	unsigned int i;
+
+	if(!loc)
+		return;
+
         fmt = loc->oformat;
 
         av_write_trailer(loc);
