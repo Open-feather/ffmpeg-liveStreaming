@@ -1,0 +1,12 @@
+1)Download and Install v4l2loopback
+	from https://github.com/umlaeute/v4l2loopback.git
+	moreInformation in ReadMe of same repository
+
+
+2) Dump Video to virtual device created by v4l2loopback
+ffmpeg -re -loop 1 -i ~/Pictures/feather1.jpg -pix_fmt yuv420p -vf "drawtext=fontfile=/usr/share/fonts/truetype/DejaVuSans-Bold.ttf:timecode='00\\:00\\:00\\;00':rate=30000/1001" -f v4l2 /dev/video0
+
+3)Play the video using
+ffplay -f v4l2 /dev/video0
+
+2)play your m3u8 file and goodluck.

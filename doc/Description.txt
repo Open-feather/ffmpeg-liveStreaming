@@ -1,0 +1,34 @@
+
+
+Project Description:
+Source code for a streaming application/server with the following specs/requirements:
+
+Prerequisites
+1. No use of flash technologies
+2. Existance of NGNX as a web-server (Apache as well, but NGNX is preferable)
+3. Existance of Microsoft based third party apps, with which the application should be able to communicate or be interfaced with via web services
+4. Streams output are to be made for windows desktop-pc and web browser as well
+5. Commands given to a running stream, must not restart the whole streaming process, but dynamically alter the resulted output transparent to the final viewer
+
+
+Open libraries/technologies to be related with or to be based on:
+1. ffmpeg
+2. gstreamer
+3. other open source libraries not without a consultation with us and an formal acceptance.
+4. HTTP, RTMP streaming protocols; HTML5 support, web services, xml etc
+
+Project Requests:
+
+1. capture stream from the webcam and show it to a desktop/browser(D/B) window (short notation from now on: D/B-W)
+2. capture stream from the webcam, show it to D/B-W and with a click of a button put/remove an image as overlay with coordinates.
+The overlay has to be made in both cases: on client-side and on the server side.
+3. capture stream from the webcam and show it to D/B-W by duplicating the stream shown as follows:
+3.1 side by side
+3.2 top & bottom
+3.3 overlayed with relative coordinates from each other
+All the results are presented as a single output stream.
+With a click of a button on the server side, one of the two should appear/dissapear on the fly, without discontinuing or restarting the stream all over.
+4. capture stream from webcam and show it to D/B-W, but interrupt it x seconds and resume it afterwards - just by clicking a button on the server side
+5. use an existing video (preferable short, a few secconds) as an insertion with automatic resume, in the middle of streaming the web cam to D/B-W
+
+6. A stream capture from the webcam, should be available to record/save on the client side, from a certain point, up to a certain point (decided by the client)
