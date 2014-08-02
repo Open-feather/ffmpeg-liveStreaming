@@ -31,12 +31,14 @@ struct webPlay{
 	AVFrame *OutFrame;
 	AVFrame *frame;
 	AVFormatContext *oc;
-	AVStream *input_stream;
+	AVRational video_avg_frame_rate;
 	AVCodecContext *dec_ctx;
 	AVFilterGraph *filter_graph;
 	AVFilterContext *buffersink;
 	AVFilterContext *buffersrc;
 	long long cur_pts;
+	long long dts;
+	long long sync_out_pts;
 
 };
 

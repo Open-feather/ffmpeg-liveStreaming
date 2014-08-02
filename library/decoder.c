@@ -7,11 +7,10 @@ void dinit_decoder_webcam(AVFormatContext **pFormatCtx,AVCodecContext *dec_ctx)
 
 	avformat_close_input(pFormatCtx);
 }
-int init_decoder_webcam(AVFormatContext **pFormatCtx, AVCodecContext **dec_ctx)
+int init_decoder_webcam(AVFormatContext **pFormatCtx, AVCodecContext **dec_ctx, AVStream **st)
 {
 	AVInputFormat *inputFormat;
 	AVDictionary *options;
-	AVStream *st;
 	AVCodec *dec = NULL;
 	int ret = 0;
 
@@ -29,8 +28,6 @@ int init_decoder_webcam(AVFormatContext **pFormatCtx, AVCodecContext **dec_ctx)
 
 	// set avdict option
 	options = NULL;
-	// set the frame rate
-	av_dict_set(&options, "framerate", "15", 0); 
 	// open the camera to get the data
 	ret = avformat_open_input(pFormatCtx, CAM_DEVICE_NAME, inputFormat, &options);
 	if(ret < 0)
@@ -51,8 +48,8 @@ int init_decoder_webcam(AVFormatContext **pFormatCtx, AVCodecContext **dec_ctx)
 		fprintf(stderr, "Could not find video stream in camera\n");
 		return ret;
 	}
-	st = (*pFormatCtx)->streams[ret];
-	*dec_ctx = st->codec;
+	*st = (*pFormatCtx)->streams[ret];
+	*dec_ctx = (*st)->codec;
 	dec = avcodec_find_decoder((*dec_ctx)->codec_id);
 
 	ret = avcodec_open2((*dec_ctx), dec,NULL);
