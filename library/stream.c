@@ -1,88 +1,14 @@
 
 /*
 
-	Play web cam using ffmpeg
+	Live Streaming using ffmpeg
 
 */
 
 #include "stream.h"
 #include "decoder.h"
-#define STREAM_HEIGHT 480
-#define STREAM_WIDTH 640
-#define STREAM_PIX_FMT    AV_PIX_FMT_YUV420P
-
-static void dinit_filters(struct webPlay *ctx)
-{
-	avfilter_graph_free(&ctx->filter_graph);
-}
-static int init_filters(struct webPlay *ctx)
-{
-	char args[512];
-	char fd_args[512];
-
-	int ret = 0;
-	int len = 0;
-	AVRational tb = ctx->ic->streams[0]->time_base;
-
-	AVFilter *buffersrc = avfilter_get_by_name("buffer");
-	AVFilter *buffersink = avfilter_get_by_name("buffersink");
-	AVFilterInOut *outputs = avfilter_inout_alloc();
-	AVFilterInOut *inputs = avfilter_inout_alloc();
-	AVBufferSinkParams *buffersink_params;
-	enum AVPixelFormat pix_fmts[] =
-	{ AV_PIX_FMT_GRAY8, AV_PIX_FMT_NONE };
-
-
-	len += snprintf(fd_args, sizeof(fd_args), "format=yuv420p,scale=%d:%d",STREAM_WIDTH,STREAM_HEIGHT);
-
-	ctx->filter_graph = avfilter_graph_alloc();
-	/* buffer video source: the decoded frames from the decoder will be inserted here. */
-	snprintf(args, sizeof(args),
-			"video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d",
-			ctx->dec_ctx->width, ctx->dec_ctx->height, ctx->dec_ctx->pix_fmt,
-			tb.num, tb.den,
-			ctx->dec_ctx->sample_aspect_ratio.num,
-			ctx->dec_ctx->sample_aspect_ratio.den);
-
-	ret = avfilter_graph_create_filter(&ctx->buffersrc, buffersrc, "in", args,
-			NULL, ctx->filter_graph);
-	if (ret < 0)
-	{
-		av_log(NULL, AV_LOG_ERROR, "Cannot create buffer sink\n");
-		return ret;
-	}
-	/* buffer video sink: to terminate the filter chain. */
-	buffersink_params = av_buffersink_params_alloc();
-	buffersink_params->pixel_fmts = pix_fmts;
-	ret = avfilter_graph_create_filter(&ctx->buffersink, buffersink, "out",
-			NULL, buffersink_params, ctx->filter_graph);
-	av_free(buffersink_params);
-	if (ret < 0)
-	{
-		av_log(NULL, AV_LOG_ERROR, "Cannot create buffer sink\n");
-		return ret;
-	}
-
-	/* Endpoints for the filter graph. */
-	outputs->name = av_strdup("in");
-	outputs->filter_ctx = ctx->buffersrc;
-	outputs->pad_idx = 0;
-	outputs->next = NULL;
-
-	inputs->name = av_strdup("out");
-	inputs->filter_ctx = ctx->buffersink;
-	inputs->pad_idx = 0;
-	inputs->next = NULL;
-
-	if ((ret = avfilter_graph_parse_ptr(ctx->filter_graph,fd_args,
-					&inputs, &outputs, NULL)) < 0)
-		return ret;
-
-	if ((ret = avfilter_graph_config(ctx->filter_graph, NULL)) < 0)
-		return ret;
-	return 0;
-}
-
+#include "filter.h"
+#include "inputs.h"
 void init_ffmpeg(void)
 {
 	// register all common ffmpeg things
@@ -97,11 +23,11 @@ void init_ffmpeg(void)
 
 
 /* Add an output stream. */
-static AVStream *add_webcam_stream(struct webPlay *web_ctx, AVCodec **codec, enum AVCodecID codec_id)
+static AVStream *add_webcam_stream(struct liveStream *ctx, AVCodec **codec, enum AVCodecID codec_id)
 {
         AVCodecContext *c = NULL;
         AVStream *st = NULL;
-	AVFormatContext *oc = web_ctx->oc;
+	AVFormatContext *oc = ctx->oc;
 
         /* find the encoder */
         *codec = avcodec_find_encoder(codec_id);
@@ -132,13 +58,13 @@ static AVStream *add_webcam_stream(struct webPlay *web_ctx, AVCodec **codec, enu
          * identical to 1.
 	 * Timebase = 1/frame rate therfore den = num
          */
-	st->avg_frame_rate.den = web_ctx->video_avg_frame_rate.den;
-	st->avg_frame_rate.num = web_ctx->video_avg_frame_rate.num;
-        st->time_base.den = web_ctx->video_avg_frame_rate.num;
-        st->time_base.num = web_ctx->video_avg_frame_rate.den;
-        c->time_base.den = web_ctx->video_avg_frame_rate.num;
-        c->time_base.num = web_ctx->video_avg_frame_rate.den;
-        c->gop_size = web_ctx->video_avg_frame_rate.num; /* emit one intra frame every twelve frames at most */
+	st->avg_frame_rate.den = ctx->video_avg_frame_rate.den;
+	st->avg_frame_rate.num = ctx->video_avg_frame_rate.num;
+        st->time_base.den = ctx->video_avg_frame_rate.num;
+        st->time_base.num = ctx->video_avg_frame_rate.den;
+        c->time_base.den = ctx->video_avg_frame_rate.num;
+        c->time_base.num = ctx->video_avg_frame_rate.den;
+        c->gop_size = ctx->video_avg_frame_rate.num; /* emit one intra frame every twelve frames at most */
         c->pix_fmt = STREAM_PIX_FMT;
         if (c->codec_id == AV_CODEC_ID_MPEG1VIDEO)
         {
@@ -184,7 +110,7 @@ static void dinit_encoder(AVFormatContext **oc)
         avformat_free_context(loc);
 }
 
-static int init_encoder(struct webPlay *stWebPlay, const char* oname)
+static int init_encoder(struct liveStream *ctx, const char* oname)
 {
 	int ret = 0;
 	char arr_string[128] = "";
@@ -196,15 +122,15 @@ static int init_encoder(struct webPlay *stWebPlay, const char* oname)
 
 
 	/* allocate the output media context */
-	avformat_alloc_output_context2(&stWebPlay->oc, NULL, NULL, oname);
-	if (!stWebPlay->oc)
+	avformat_alloc_output_context2(&ctx->oc, NULL, NULL, oname);
+	if (!ctx->oc)
 	{
 		av_log(NULL, AV_LOG_ERROR, "Could not deduce output format\n");
 		ret = -1;
 		goto end;
 	}
 	//save output context in local context
-	loc = stWebPlay->oc;
+	loc = ctx->oc;
 	
 	// set wrap around option in hls
 	options = NULL;
@@ -219,7 +145,7 @@ static int init_encoder(struct webPlay *stWebPlay, const char* oname)
 	fmt = loc->oformat;
 	if (fmt->video_codec != AV_CODEC_ID_NONE)
 	{
-		vst = add_webcam_stream(stWebPlay, &video_codec, fmt->video_codec);
+		vst = add_webcam_stream(ctx, &video_codec, fmt->video_codec);
 	}
 	if (!vst)
 	{
@@ -265,7 +191,7 @@ static int init_encoder(struct webPlay *stWebPlay, const char* oname)
 
 end:
         if(ret < 0)  
-		dinit_encoder(&stWebPlay->oc);
+		dinit_encoder(&ctx->oc);
 	return ret;
 }
 
@@ -313,17 +239,17 @@ static int write_video_frame(AVFormatContext *oc, AVStream *st, AVFrame *frame)
         return 0;
 }
 
-EXPORT void stop_capture(void *ctx)
+EXPORT void stop_capture(void *sctx)
 {
-	struct webPlay *stWebPlay = (struct webPlay *)ctx;
-	if (stWebPlay)
+	struct liveStream *ctx = (struct liveStream *)ctx;
+	if (ctx)
 	{
-		dinit_filters(stWebPlay);
-		dinit_decoder_webcam(&stWebPlay->ic, stWebPlay->dec_ctx);
-		dinit_encoder(&stWebPlay->oc);
-		av_frame_free(&stWebPlay->OutFrame);
-		av_frame_free(&stWebPlay->InFrame);
-		free(stWebPlay);
+		dinit_filters(ctx);
+		dinit_inputs(&ctx->inputs,&ctx->nb_input);
+		dinit_encoder(&ctx->oc);
+		av_frame_free(&ctx->OutFrame);
+		av_frame_free(&ctx->InFrame);
+		free(ctx);
 	}
 }
 
@@ -332,33 +258,34 @@ EXPORT void *init_capture(const char*path)
 
 	int ret = 0;
 	// structure with ffmpeg variables
-	struct webPlay *stWebPlay;
+	struct liveStream *ctx;
 	AVStream *stream = NULL;
 
 	// allocation of webplay structure
-	stWebPlay = malloc(sizeof(struct webPlay));
-	if(stWebPlay == NULL)
+	ctx = malloc(sizeof(struct liveStream));
+	if(ctx == NULL)
 	{
 		fprintf(stderr,"Error in web play struct alloc\n");
 		ret =-1;
 		goto end;
 	}
-	memset(stWebPlay, 0, sizeof(*stWebPlay));
+	memset(ctx, 0, sizeof(*ctx));
 
 	init_ffmpeg();
-	ret = init_decoder_webcam(&stWebPlay->ic, &stWebPlay->dec_ctx, &stream);
+	ret = configure_input(ctx,CAM_DEVICE_NAME,IN_WEBCAM);
 	if(ret <0)
 	{
 		ret =-1;
 		goto end;
 	}
+	stream = ctx->inputs[0].st;
 	/** Initalize framerate coming from webcam */
-	stWebPlay->video_avg_frame_rate.num = stream->avg_frame_rate.num;
-	stWebPlay->video_avg_frame_rate.den = stream->avg_frame_rate.den;
+	ctx->video_avg_frame_rate.num = stream->avg_frame_rate.num;
+	ctx->video_avg_frame_rate.den = stream->avg_frame_rate.den;
 
-	init_filters(stWebPlay);
+	init_filters(ctx);
 
-	ret = init_encoder(stWebPlay,path);
+	ret = init_encoder(ctx, path);
 	if(ret < 0)
 	{
 		printf("Error in encoder init\n");
@@ -366,40 +293,40 @@ EXPORT void *init_capture(const char*path)
 		goto end;
 	}
 
-	stWebPlay->InFrame          = av_frame_alloc();
-	stWebPlay->OutFrame         = av_frame_alloc();
+	ctx->InFrame          = av_frame_alloc();
+	ctx->OutFrame         = av_frame_alloc();
 end:
 	if(ret < 0)
 	{
-		stop_capture((void*)stWebPlay);
+		stop_capture((void*)ctx);
 		return NULL;
 	}
-	return stWebPlay;
+	return ctx;
 }
 
 
-EXPORT int start_capture(void *ctx)
+EXPORT int start_capture(void *actx)
 {
-	struct webPlay *stWebPlay = (struct webPlay *)ctx;
+	struct liveStream *ctx = (struct liveStream *)actx;
 	int got_frame;
 	int ret;
 	AVPacket packet;
 	AVFormatContext *ic;
 	long long start_time;
 
-	if(!stWebPlay)
+	if(!ctx)
 	{
 		ret = -1;
 		goto end;
 	}
-	ic = stWebPlay->ic;
+	ic = ctx->inputs->ic;
 
 	if (ic->start_time != AV_NOPTS_VALUE)
 		start_time = ic->start_time;
 
-	while( (ret = av_read_frame(stWebPlay->ic,&packet) ) >= 0)
+	while( (ret = av_read_frame(ic,&packet) ) >= 0)
 	{
-		AVCodecContext *dec_ctx = stWebPlay->ic->streams[0]->codec;
+		AVCodecContext *dec_ctx = ic->streams[0]->codec;
 		if (packet.pts != AV_NOPTS_VALUE)
 			packet.pts -= av_rescale_q(start_time, AV_TIME_BASE_Q, ic->streams[0]->time_base);
 
@@ -408,7 +335,7 @@ EXPORT int start_capture(void *ctx)
 
 
                 //packet.dts = av_rescale_q(stWebPlay->dts, AV_TIME_BASE_Q, ic->streams[0]->time_base);
-		ret = avcodec_decode_video2(dec_ctx, stWebPlay->InFrame, &got_frame, &packet);
+		ret = avcodec_decode_video2(dec_ctx, ctx->InFrame, &got_frame, &packet);
 		if (ret < 0)
 		{
 			av_log(NULL, AV_LOG_ERROR, "Error decoding video\n");
@@ -416,8 +343,8 @@ EXPORT int start_capture(void *ctx)
 		}
 		if(!got_frame)
 			continue;
-		stWebPlay->InFrame->pts = av_frame_get_best_effort_timestamp(stWebPlay->InFrame);
-		if (av_buffersrc_add_frame_flags(stWebPlay->buffersrc, stWebPlay->InFrame, AV_BUFFERSRC_FLAG_PUSH) < 0)
+		ctx->InFrame->pts = av_frame_get_best_effort_timestamp(ctx->InFrame);
+		if (av_buffersrc_add_frame_flags(ctx->inputs[0].in_filter, ctx->InFrame, AV_BUFFERSRC_FLAG_PUSH) < 0)
 		{
 			av_log(NULL, AV_LOG_ERROR,
 					"Error while feeding the filtergraph\n");
@@ -428,7 +355,7 @@ EXPORT int start_capture(void *ctx)
 		{
 			int i = 0;
 			int nb_frames = 1;
-			ret = av_buffersink_get_frame_flags(stWebPlay->buffersink, stWebPlay->OutFrame,AV_BUFFERSINK_FLAG_NO_REQUEST);
+			ret = av_buffersink_get_frame_flags(ctx->out_filter, ctx->OutFrame,AV_BUFFERSINK_FLAG_NO_REQUEST);
 			if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
 			{
 				ret = 0;
@@ -440,11 +367,11 @@ EXPORT int start_capture(void *ctx)
 				ret = -1;
 				break;
 			}
-			if (stWebPlay->OutFrame->pts != AV_NOPTS_VALUE)
+			if (ctx->OutFrame->pts != AV_NOPTS_VALUE)
 			{
-				stWebPlay->OutFrame->pts = av_rescale_q(stWebPlay->OutFrame->pts, stWebPlay->buffersink->inputs[0]->time_base, stWebPlay->oc->streams[0]->codec->time_base);
+				ctx->OutFrame->pts = av_rescale_q(ctx->OutFrame->pts, ctx->out_filter->inputs[0]->time_base, ctx->oc->streams[0]->codec->time_base);
 			}
-			nb_frames += stWebPlay->OutFrame->pts - stWebPlay->sync_out_pts;
+			nb_frames += ctx->OutFrame->pts - ctx->sync_out_pts;
 			/** drop all frames if extra are provided */
 			if(nb_frames < 0)
 				nb_frames = 1;
@@ -453,18 +380,17 @@ EXPORT int start_capture(void *ctx)
 				nb_frames = 1;
 			for( i = 0;i < nb_frames;i++)
 			{
-				stWebPlay->OutFrame->pts = stWebPlay->sync_out_pts;
-				write_video_frame(stWebPlay->oc,stWebPlay->oc->streams[0],stWebPlay->OutFrame);
-				stWebPlay->sync_out_pts++;
+				ctx->OutFrame->pts = ctx->sync_out_pts;
+				write_video_frame(ctx->oc,ctx->oc->streams[0],ctx->OutFrame);
+				ctx->sync_out_pts++;
 			}
-			//h264_encoder(stWebPlay);
-			av_frame_unref(stWebPlay->OutFrame);
+			av_frame_unref(ctx->OutFrame);
 		}
-		av_frame_unref(stWebPlay->InFrame);
+		av_frame_unref(ctx->InFrame);
 		av_free_packet(&packet);
 	}
 end:    if(ret <0)
-		stop_capture(stWebPlay);
+		stop_capture(ctx);
 	return ret;
 }
 

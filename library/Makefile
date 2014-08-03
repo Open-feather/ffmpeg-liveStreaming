@@ -1,7 +1,7 @@
 CFLAGS= -Wall -ggdb3 -std=gnu99
 LDFLAGS= -shared -pthread
 FFMPEG_LIBS=libavfilter
-SRC=decoder.c stream.c
+SRC=decoder.c stream.c filter.c inputs.c
 
 #default library name
 LIB=libstream.so

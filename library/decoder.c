@@ -1,21 +1,26 @@
 #include "stream.h"
+#include "inputs.h"
 
-void dinit_decoder_webcam(AVFormatContext **pFormatCtx,AVCodecContext *dec_ctx)
+void dinit_decoder(AVFormatContext **pFormatCtx,AVCodecContext *dec_ctx)
 {
 	if (dec_ctx)
                 avcodec_close(dec_ctx);
 
 	avformat_close_input(pFormatCtx);
 }
-int init_decoder_webcam(AVFormatContext **pFormatCtx, AVCodecContext **dec_ctx, AVStream **st)
+int init_decoder(AVFormatContext **pFormatCtx, char *fname,char *fmt)
 {
 	AVInputFormat *inputFormat;
 	AVDictionary *options;
 	AVCodec *dec = NULL;
+	AVCodecContext *dec_ctx;
+	AVStream *st;
 	int ret = 0;
 
-	// get the camera input format from 
-	inputFormat = av_find_input_format(CAM_DRIVER);
+	/** If format is provided then use it
+	 * neccassary in case of webcam.
+	*/
+	inputFormat = av_find_input_format(fmt);
 
 	// allocate contex
 	*pFormatCtx = avformat_alloc_context();
@@ -28,8 +33,9 @@ int init_decoder_webcam(AVFormatContext **pFormatCtx, AVCodecContext **dec_ctx, 
 
 	// set avdict option
 	options = NULL;
-	// open the camera to get the data
-	ret = avformat_open_input(pFormatCtx, CAM_DEVICE_NAME, inputFormat, &options);
+
+
+	ret = avformat_open_input(pFormatCtx, fname, inputFormat, &options);
 	if(ret < 0)
 	{
 		goto end;
@@ -48,11 +54,11 @@ int init_decoder_webcam(AVFormatContext **pFormatCtx, AVCodecContext **dec_ctx, 
 		fprintf(stderr, "Could not find video stream in camera\n");
 		return ret;
 	}
-	*st = (*pFormatCtx)->streams[ret];
-	*dec_ctx = (*st)->codec;
-	dec = avcodec_find_decoder((*dec_ctx)->codec_id);
+	st = (*pFormatCtx)->streams[ret];
+	dec_ctx = st->codec;
+	dec = avcodec_find_decoder(dec_ctx->codec_id);
 
-	ret = avcodec_open2((*dec_ctx), dec,NULL);
+	ret = avcodec_open2(dec_ctx, dec,NULL);
 	if (ret < 0)
 	{
 		fprintf(stderr, "Could not find video stream in camera\n");
@@ -61,7 +67,7 @@ int init_decoder_webcam(AVFormatContext **pFormatCtx, AVCodecContext **dec_ctx, 
 end:
 	if(ret < 0)	
 	{
-		dinit_decoder_webcam(pFormatCtx,*dec_ctx);
+		dinit_decoder(pFormatCtx,dec_ctx);
 		avformat_close_input(pFormatCtx);
 	}
 	return ret;
