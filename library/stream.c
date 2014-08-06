@@ -131,7 +131,7 @@ static int init_encoder(struct liveStream *ctx, const char* oname)
 	}
 	//save output context in local context
 	loc = ctx->oc;
-	
+
 	// set wrap around option in hls
 	options = NULL;
 	av_dict_set(&options, "hls_wrap", "5", 0);
@@ -239,16 +239,15 @@ static int write_video_frame(AVFormatContext *oc, AVStream *st, AVFrame *frame)
         return 0;
 }
 
-EXPORT void stop_capture(void *sctx)
+EXPORT void stop_capture(void *actx)
 {
-	struct liveStream *ctx = (struct liveStream *)ctx;
+	struct liveStream *ctx = (struct liveStream *)actx;
 	if (ctx)
 	{
 		dinit_filters(ctx);
 		dinit_inputs(&ctx->inputs,&ctx->nb_input);
 		dinit_encoder(&ctx->oc);
 		av_frame_free(&ctx->OutFrame);
-		av_frame_free(&ctx->InFrame);
 		free(ctx);
 	}
 }
@@ -261,7 +260,7 @@ EXPORT void *init_capture(const char*path)
 	struct liveStream *ctx;
 	AVStream *stream = NULL;
 
-	// allocation of webplay structure
+	// allocation of Live Stream structure
 	ctx = malloc(sizeof(struct liveStream));
 	if(ctx == NULL)
 	{
@@ -293,7 +292,6 @@ EXPORT void *init_capture(const char*path)
 		goto end;
 	}
 
-	ctx->InFrame          = av_frame_alloc();
 	ctx->OutFrame         = av_frame_alloc();
 end:
 	if(ret < 0)
@@ -304,7 +302,64 @@ end:
 	return ctx;
 }
 
+int get_input_packet(struct lsInput *input,AVPacket *pkt)
+{
+	return av_thread_message_queue_recv(input->in_thread_queue,pkt,AV_THREAD_MESSAGE_NONBLOCK);
+}
+static int output_packet(struct lsInput *input,const AVPacket *pkt)
+{
+	AVPacket avpkt;
+	int got_output = 0;
+	int ret = 0;
+	if (pkt == NULL)
+	{
+		av_init_packet(&avpkt);
+		avpkt.data = NULL;
+		avpkt.size = 0;
+	}
+	else
+	{
+		avpkt = *pkt;
+	}
+	ret = avcodec_decode_video2(input->dec_ctx,input->InFrame, &got_output,&avpkt);
+	if (!got_output || ret < 0)
+	{
+		av_buffersrc_add_ref(input->in_filter, NULL, 0);
+	}
+	if(ret < 0)
+		av_log(NULL,AV_LOG_ERROR,"unable to decode video\n");
 
+	return ret;
+}
+struct lsInput* get_best_input(struct liveStream *ctx)
+{
+	struct lsInput* input = NULL;
+	struct lsInput* best_input = NULL;
+	int nb_requests = 0;
+	int nb_requests_max = 0;
+	int ret = 0;
+
+	ret = avfilter_graph_request_oldest(ctx->filter_graph);
+	if(ret >= 0)
+		av_log(NULL,AV_LOG_ERROR,"possible loss of data\n");
+
+	for(input = ctx->inputs;input;input = input->next)
+	{
+		if(input->eof_reached)
+			continue;
+		nb_requests = av_buffersrc_get_nb_failed_requests(input->in_filter);
+		if (nb_requests >  nb_requests_max)
+		{
+			nb_requests_max = nb_requests;
+			best_input = input;
+		}
+	}
+//	if(!best_input)
+//	{
+//		for (i = 0; i < ctx->graph->nb_outputs; i++)
+//	}
+	return best_input;
+}
 EXPORT int start_capture(void *actx)
 {
 	struct liveStream *ctx = (struct liveStream *)actx;
@@ -313,29 +368,54 @@ EXPORT int start_capture(void *actx)
 	AVPacket packet;
 	AVFormatContext *ic;
 	long long start_time;
+	struct lsInput* input = NULL;
 
 	if(!ctx)
 	{
 		ret = -1;
 		goto end;
 	}
-	ic = ctx->inputs->ic;
 
-	if (ic->start_time != AV_NOPTS_VALUE)
-		start_time = ic->start_time;
 
-	while( (ret = av_read_frame(ic,&packet) ) >= 0)
+	while(1)
 	{
-		AVCodecContext *dec_ctx = ic->streams[0]->codec;
-		if (packet.pts != AV_NOPTS_VALUE)
-			packet.pts -= av_rescale_q(start_time, AV_TIME_BASE_Q, ic->streams[0]->time_base);
+		input = get_best_input(ctx);
+		if(!input)
+		{
+			continue;
+		}
+		ic = input->ic;
+		if (ic->start_time != AV_NOPTS_VALUE)
+			start_time = ic->start_time;
 
-		if (packet.dts != AV_NOPTS_VALUE)
-			packet.dts -= av_rescale_q(start_time, AV_TIME_BASE_Q, ic->streams[0]->time_base);
+		AVCodecContext *dec_ctx = input->dec_ctx;
+		ret = get_input_packet(input,&packet);
+		if (ret == AVERROR(EAGAIN))
+		{
+			continue;
+		}
+		else if (ret == AVERROR_EOF)
+		{
+			output_packet(input,NULL);
+			input->eof_reached = 1;
+			continue;
+		}
+		if(ret < 0)
+		{
+			av_log(NULL,AV_LOG_ERROR,"No Input packet %x\n",ret);
+			break;
+		}
+		if(input->id != 1)
+		{
+			if (packet.pts != AV_NOPTS_VALUE)
+				packet.pts -= av_rescale_q(start_time, AV_TIME_BASE_Q, ic->streams[0]->time_base);
 
+			if (packet.dts != AV_NOPTS_VALUE)
+				packet.dts -= av_rescale_q(start_time, AV_TIME_BASE_Q, ic->streams[0]->time_base);
+		}
 
                 //packet.dts = av_rescale_q(stWebPlay->dts, AV_TIME_BASE_Q, ic->streams[0]->time_base);
-		ret = avcodec_decode_video2(dec_ctx, ctx->InFrame, &got_frame, &packet);
+		ret = avcodec_decode_video2(dec_ctx, input->InFrame, &got_frame, &packet);
 		if (ret < 0)
 		{
 			av_log(NULL, AV_LOG_ERROR, "Error decoding video\n");
@@ -343,8 +423,11 @@ EXPORT int start_capture(void *actx)
 		}
 		if(!got_frame)
 			continue;
-		ctx->InFrame->pts = av_frame_get_best_effort_timestamp(ctx->InFrame);
-		if (av_buffersrc_add_frame_flags(ctx->inputs[0].in_filter, ctx->InFrame, AV_BUFFERSRC_FLAG_PUSH) < 0)
+
+
+		input->InFrame->pts = av_frame_get_best_effort_timestamp(input->InFrame);
+
+		if (av_buffersrc_add_frame_flags(input->in_filter, input->InFrame, AV_BUFFERSRC_FLAG_PUSH) < 0)
 		{
 			av_log(NULL, AV_LOG_ERROR,
 					"Error while feeding the filtergraph\n");
@@ -386,13 +469,38 @@ EXPORT int start_capture(void *actx)
 			}
 			av_frame_unref(ctx->OutFrame);
 		}
-		av_frame_unref(ctx->InFrame);
-		av_free_packet(&packet);
 	}
-end:    if(ret <0)
-		stop_capture(ctx);
+	av_frame_unref(input->InFrame);
+	av_free_packet(&packet);
+end:
 	return ret;
 }
 
+EXPORT int set_image(void *actx,char*path, int xpos,int ypos,int height, int width)
+{
+	int ret = 0;
+	char*str = NULL;
+	struct liveStream *ctx = (struct liveStream *)actx;
+	ret = configure_input(ctx,path,IN_IMAGE);
+	if(ret < 0)
+	{
+		av_log(NULL,AV_LOG_ERROR,"unable to configure input\n");
+		return ret;
+	}
 
-
+	str = malloc(ctx->graph_desc.len +1);
+	if(!str)
+	{
+		av_log(NULL,AV_LOG_ERROR,"No memory Available\n");
+		return -1;
+	}
+	strcpy(str,ctx->graph_desc.str);
+	av_bprintf(&ctx->graph_desc, "[web];[1]format=yuv420p,scale=%d:%d[onit];[web][onit]overlay",height,width);
+	ret = configure_filter(ctx);
+	if(ret < 0)
+	{
+		av_log(NULL,AV_LOG_ERROR,"Unable to configure Filter\n");
+		return -1;
+	}
+	return ret;
+}

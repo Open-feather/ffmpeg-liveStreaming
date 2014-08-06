@@ -6,6 +6,9 @@ extern "C" {
 int start_capture(void *ctx);
 void *init_capture(const char*path);
 void stop_capture(void *ctx);
+
+int set_image(void *ctx,const char*path, int xpos,int ypos,int height, int width);
+
 #ifdef __cplusplus
 }
 #endif

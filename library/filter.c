@@ -1,21 +1,31 @@
 #include "stream.h"
-#include "libavutil/bprint.h"
+#include "inputs.h"
 
 void dinit_filters(struct liveStream *ctx)
 {
 	avfilter_graph_free(&ctx->filter_graph);
 }
 
-int configure_input_filter(struct liveStream *ctx, long in_idx, AVFilterInOut *in)
+int configure_input_filter(struct liveStream *ctx, long in_id, AVFilterInOut *in)
 {
 	AVFilter *buffer = avfilter_get_by_name("buffer");
-	struct lsInput *input = &ctx->inputs[in_idx];
-	AVStream *st = input->st;
-	AVCodecContext *dec_ctx = input->dec_ctx;
-	AVRational tb = st->time_base;
+	struct lsInput *input = NULL;
+	AVStream *st;
+	AVCodecContext *dec_ctx;
+	AVRational tb;
 	AVBPrint args;
 	int ret = 0;
 	char name[128];
+
+	input = get_input_by_id(ctx->inputs,in_id);
+	if(!input)
+	{
+		av_log(NULL,AV_LOG_ERROR,"Invalid input id for inputs list\n");
+		return -1;
+	}
+	st = input->st;
+	dec_ctx = input->dec_ctx;
+	tb = st->time_base;
 
 	av_bprint_init(&args, 0, 1);
 	/* buffer video source: the decoded frames from the decoder will be inserted here. */
@@ -24,7 +34,7 @@ int configure_input_filter(struct liveStream *ctx, long in_idx, AVFilterInOut *i
 			tb.num, tb.den,
 			dec_ctx->sample_aspect_ratio.num,
 			dec_ctx->sample_aspect_ratio.den);
-	snprintf(name, sizeof(name), "Input %ld", in_idx);
+	snprintf(name, sizeof(name), "Input %ld", in_id);
 	ret = avfilter_graph_create_filter(&input->in_filter, buffer, name, args.str, NULL, ctx->filter_graph);
 	if(ret < 0)
 		return ret;
@@ -59,11 +69,12 @@ int configure_output_filter(struct liveStream *ctx, AVFilterInOut *out)
 
 	return ret;
 }
-static int configure_filter(struct liveStream *ctx, char *graph_desc)
+int configure_filter(struct liveStream *ctx)
 {
 	int ret = 0;
 	int i = 0;
-	long in_idx;
+	/** Input Id */
+	long in_id;
 	AVFilterInOut *outputs;
 	AVFilterInOut *inputs;
 	AVFilterInOut *cur;
@@ -73,20 +84,20 @@ static int configure_filter(struct liveStream *ctx, char *graph_desc)
 	if (NULL == ctx->filter_graph)
 		return -1;
 
-	ret = avfilter_graph_parse2(ctx->filter_graph, graph_desc, &inputs, &outputs);
+	ret = avfilter_graph_parse2(ctx->filter_graph, ctx->graph_desc.str, &inputs, &outputs);
 	if(ret < 0)
 		return ret;
 
 	for (i = 0,cur = inputs; cur; cur = cur->next,i++)
 	{
-		in_idx = strtol(inputs->name,NULL,0);
-		if(in_idx < 0 || in_idx >= ctx->nb_input)
+		in_id = strtol(cur->name,NULL,0);
+		if(in_id < 0 || in_id >= ctx->nb_input)
 		{
 			/** Invalid index of video provided */
 			ret = -1;
 			break;
 		}
-		configure_input_filter(ctx, in_idx, cur);
+		configure_input_filter(ctx, in_id, cur);
 	}
 	ret = configure_output_filter(ctx,outputs);
 	if(ret < 0)
@@ -94,25 +105,23 @@ static int configure_filter(struct liveStream *ctx, char *graph_desc)
 		printf("unable to configure output filter\n");
 		return ret;
 	}
+	if ((ret = avfilter_graph_config(ctx->filter_graph, NULL)) < 0)
+		return ret;
 
 	return 0;
 }
 int init_filters(struct liveStream *ctx)
 {
-	char fd_args[512];
-	int len = 0;
 	int ret = 0;
 
-	//len += snprintf(fd_args, sizeof(fd_args), "[0]format=yuv420p,scale=%d:%d; [1] scale=%d:%d",STREAM_WIDTH,STREAM_HEIGHT,100,100);
-	len += snprintf(fd_args, sizeof(fd_args), "[0]format=yuv420p,scale=%d:%d",STREAM_WIDTH,STREAM_HEIGHT);
+	av_bprint_init(&ctx->graph_desc, 0, 1);
+	av_bprintf(&ctx->graph_desc, "[0]format=yuv420p,scale=%d:%d",STREAM_WIDTH,STREAM_HEIGHT);
 
-	ret = configure_filter(ctx,fd_args);
+	ret = configure_filter(ctx);
 	if(ret <  0)
 	{
 		printf("unable to configure filter\n");
 	}
-	if ((ret = avfilter_graph_config(ctx->filter_graph, NULL)) < 0)
-		return ret;
 
 	return 0;
 }

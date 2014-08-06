@@ -17,13 +17,17 @@ extern "C" {
 #include <libavutil/audio_fifo.h>
 #include <libavdevice/avdevice.h>
 #include <libavutil/imgutils.h>
+#include <libavutil/threadmessage.h>
+#include <libavutil/time.h>
+#include "libavutil/bprint.h"
 #ifdef __cplusplus
 }
 #endif
 
+#include <pthread.h>
 struct lsInput
 {
-	char *name;
+	int id;
 	/** Frame rate */
 	AVRational fr;
 	/** Time base */
@@ -31,6 +35,11 @@ struct lsInput
 	AVCodecContext *dec_ctx;
 	AVStream *st;
 	AVFilterContext *in_filter;
+	pthread_t thread;
+	AVThreadMessageQueue *in_thread_queue;
+	AVFrame *InFrame;
+	int eof_reached;
+	struct lsInput *next;
 };
 struct liveStream
 {
@@ -38,13 +47,13 @@ struct liveStream
 	int nb_input;
 	AVCodecContext  *pCodecCtx;
 	AVCodec * pCodec;
-	AVFrame *InFrame;
 	AVFrame *OutFrame;
 	AVFrame *frame;
 	AVFormatContext *oc;
 	AVRational video_avg_frame_rate;
 	AVCodecContext *dec_ctx;
 	AVFilterGraph *filter_graph;
+	AVBPrint graph_desc;
 	AVFilterContext *out_filter;
 	long long cur_pts;
 	long long dts;
