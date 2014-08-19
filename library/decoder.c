@@ -13,7 +13,7 @@ int init_decoder(AVFormatContext **pFormatCtx, char *fname,char *fmt)
 	AVInputFormat *inputFormat;
 	AVDictionary *options;
 	AVCodec *dec = NULL;
-	AVCodecContext *dec_ctx;
+	AVCodecContext *dec_ctx = NULL;
 	AVStream *st;
 	int ret = 0;
 

@@ -481,6 +481,10 @@ EXPORT int set_image(void *actx,char*path, int xpos,int ypos,int height, int wid
 	int ret = 0;
 	char*str = NULL;
 	struct liveStream *ctx = (struct liveStream *)actx;
+
+	if(!ctx)
+		return -1;
+
 	ret = configure_input(ctx,path,IN_IMAGE);
 	if(ret < 0)
 	{

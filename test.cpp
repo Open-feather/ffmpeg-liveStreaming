@@ -11,7 +11,10 @@ int main(int argc, char*argv[])
 
 	void *ctx = init_capture("out.m3u8");
 	if(!ctx)
+	{
 		cout<<"Please verify your camera is On"<<endl;
+		return -1;
+	}
 
 	set_image(ctx,"test.jpg",xpos,ypos,height,width);
 
