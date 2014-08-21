@@ -23,7 +23,7 @@ int main(int argc, char*argv[])
 	{
 		cout<<"error while capturing video"<<endl;
 	}
-	
+
 	stop_capture(ctx);
 
 }
