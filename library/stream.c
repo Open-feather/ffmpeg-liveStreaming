@@ -343,7 +343,9 @@ struct lsInput* get_best_input(struct liveStream *ctx)
 	int nb_requests_max = 0;
 	int ret = 0;
 
+	take_filter_lock(&ctx->filter_lock);
 	ret = avfilter_graph_request_oldest(ctx->filter_graph);
+	give_filter_lock(&ctx->filter_lock);
 	if(ret >= 0)
 		av_log(NULL,AV_LOG_ERROR,"possible loss of data\n");
 
@@ -351,17 +353,16 @@ struct lsInput* get_best_input(struct liveStream *ctx)
 	{
 		if(input->eof_reached)
 			continue;
+		take_filter_lock(&ctx->filter_lock);
 		nb_requests = av_buffersrc_get_nb_failed_requests(input->in_filter);
+		give_filter_lock(&ctx->filter_lock);
 		if (nb_requests >  nb_requests_max)
 		{
 			nb_requests_max = nb_requests;
 			best_input = input;
 		}
 	}
-//	if(!best_input)
-//	{
-//		for (i = 0; i < ctx->graph->nb_outputs; i++)
-//	}
+
 	return best_input;
 }
 EXPORT int start_capture(void *actx)
@@ -431,18 +432,22 @@ EXPORT int start_capture(void *actx)
 
 		input->InFrame->pts = av_frame_get_best_effort_timestamp(input->InFrame);
 
+		take_filter_lock(&ctx->filter_lock);
 		if (av_buffersrc_add_frame_flags(input->in_filter, input->InFrame, AV_BUFFERSRC_FLAG_PUSH) < 0)
 		{
 			av_log(NULL, AV_LOG_ERROR,
 					"Error while feeding the filtergraph\n");
 		}
+		give_filter_lock(&ctx->filter_lock);
 
 		/* pull filtered frames from the filtergraph */
 		while (1)
 		{
 			int i = 0;
 			int nb_frames = 1;
+			take_filter_lock(&ctx->filter_lock);
 			ret = av_buffersink_get_frame_flags(ctx->out_filter, ctx->OutFrame,AV_BUFFERSINK_FLAG_NO_REQUEST);
+			give_filter_lock(&ctx->filter_lock);
 			if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
 			{
 				ret = 0;

@@ -25,6 +25,7 @@ extern "C" {
 #endif
 
 #include <pthread.h>
+#include <semaphore.h>
 struct lsInput
 {
 	int id;
@@ -58,7 +59,8 @@ struct liveStream
 	long long cur_pts;
 	long long dts;
 	long long sync_out_pts;
-
+	sem_t filter_lock;
+	struct timespec lock_time;
 };
 
 #define STREAM_HEIGHT 480

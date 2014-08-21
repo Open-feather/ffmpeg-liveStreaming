@@ -1,7 +1,11 @@
+
 CXXFLAGS=-I../library/
-LDFLAGS= -ldl
+LDFLAGS= -ldl -pthread
 SRC= test.cpp
 
+#OBJS=$(addsuffix .o,$(EXAMPLES))
+
+EXAMPLES= test multi_thread_test
 SYS := $(shell $(CXX) -dumpmachine)
 
 ifneq (, $(findstring linux, $(SYS)))
@@ -11,12 +15,8 @@ endif
 ifneq (, $(findstring mingw, $(SYS)))
 LIBRARY=../library/libstream.dll
 endif
-
-debug:$(SRC)
-	$(CXX) -g $(SRC)  $(CXXFLAGS) $(LIBRARY)
-
-all:test.cpp
-	$(CXX) -g $(SRC)   $(CXXFLAGS) $(LDFLAGS)
+LDFLAGS += $(LIBRARY)
+all:$(EXAMPLES)
 
 clean:
-	rm -rf a.out test.ts
+	rm -rf $(EXAMPLES) test.ts *.o

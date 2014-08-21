@@ -4,6 +4,7 @@
 void dinit_filters(struct liveStream *ctx)
 {
 	avfilter_graph_free(&ctx->filter_graph);
+	sem_close(&ctx->filter_lock);
 }
 
 int configure_input_filter(struct liveStream *ctx, long in_id, AVFilterInOut *in)
@@ -68,6 +69,36 @@ int configure_output_filter(struct liveStream *ctx, AVFilterInOut *out)
 		return ret;
 
 	return ret;
+
+}
+
+int take_filter_lock(sem_t *sem)
+{
+	struct timespec ts;
+	int ret;
+	if (clock_gettime(CLOCK_REALTIME, &ts) == -1)
+	{
+		av_log(NULL,AV_LOG_ERROR,"clock_gettime failed\n");
+	}
+	/* lock time set to 5 second */
+	ts.tv_sec += 5;
+
+	while ((ret = sem_timedwait(sem, &ts)) == -1)
+	{
+		if (errno == EINTR)
+			continue;       /* Restart if interrupted by handler */
+		else
+		{
+			av_log(NULL,AV_LOG_ERROR,"locks messed up\n");
+			break;
+		}
+	}
+	return ret;
+
+}
+int give_filter_lock(sem_t *sem)
+{
+	return sem_post(sem);
 }
 int configure_filter(struct liveStream *ctx)
 {
@@ -79,6 +110,7 @@ int configure_filter(struct liveStream *ctx)
 	AVFilterInOut *inputs;
 	AVFilterInOut *cur;
 
+	take_filter_lock(&ctx->filter_lock);
 	avfilter_graph_free(&ctx->filter_graph);
 	ctx->filter_graph = avfilter_graph_alloc();
 	if (NULL == ctx->filter_graph)
@@ -107,6 +139,7 @@ int configure_filter(struct liveStream *ctx)
 	}
 	if ((ret = avfilter_graph_config(ctx->filter_graph, NULL)) < 0)
 		return ret;
+	give_filter_lock(&ctx->filter_lock);
 
 	return 0;
 }
@@ -114,6 +147,10 @@ int init_filters(struct liveStream *ctx)
 {
 	int ret = 0;
 
+	if (sem_init(&ctx->filter_lock, 0, 1) == -1)
+	{
+		av_log(NULL,AV_LOG_ERROR,"Unable to init filter locks\n");
+	}
 	av_bprint_init(&ctx->graph_desc, 0, 1);
 	av_bprintf(&ctx->graph_desc, "[0]format=yuv420p,scale=%d:%d",STREAM_WIDTH,STREAM_HEIGHT);
 
