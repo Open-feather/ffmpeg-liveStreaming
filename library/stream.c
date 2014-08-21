@@ -93,7 +93,6 @@ static void dinit_encoder(AVFormatContext **oc)
 
         fmt = loc->oformat;
 
-        av_write_trailer(loc);
         /* Close each codec. */
         for (i = 0; i < loc->nb_streams; i++)
         {
@@ -106,8 +105,9 @@ static void dinit_encoder(AVFormatContext **oc)
                 /* Close the output file. */
                 avio_close(loc->pb);
         }
-
+        /** loc is freed inside free_context */
         avformat_free_context(loc);
+	*oc = NULL;
 }
 
 static int init_encoder(struct liveStream *ctx, const char* oname)
@@ -115,7 +115,7 @@ static int init_encoder(struct liveStream *ctx, const char* oname)
 	int ret = 0;
 	char arr_string[128] = "";
 	AVOutputFormat *fmt;
-	AVCodec *video_codec;
+	AVCodec *video_codec = NULL;
 	AVStream *vst = NULL;
 	AVFormatContext *loc;
 	AVDictionary *options;
@@ -246,7 +246,11 @@ EXPORT void stop_capture(void *actx)
 	{
 		dinit_filters(ctx);
 		dinit_inputs(&ctx->inputs,&ctx->nb_input);
-		dinit_encoder(&ctx->oc);
+		if(ctx->oc)
+		{
+			av_write_trailer(ctx->oc);
+			dinit_encoder(&ctx->oc);
+		}
 		av_frame_free(&ctx->OutFrame);
 		free(ctx);
 	}

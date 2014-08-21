@@ -4,10 +4,14 @@
 #define CAM_DRIVER "vfwcap"
 #define CAM_DEVICE_NAME "0"
 #define EXPORT __declspec(dllexport)
+#elif MINGW
+#define CAM_DRIVER "vfwcap"
+#define CAM_DEVICE_NAME "0"
+#define EXPORT __declspec(dllexport)
 #else
+#define EXPORT
 #define CAM_DRIVER "v4l2"
 #define CAM_DEVICE_NAME "/dev/video0"
-#define EXPORT
 #endif
 
 
