@@ -503,7 +503,7 @@ EXPORT int set_image(void *actx,char*path, int xpos,int ypos,int height, int wid
 		return -1;
 	}
 	strcpy(str,ctx->graph_desc.str);
-	av_bprintf(&ctx->graph_desc, "[web];[1]format=yuv420p,scale=%d:%d[onit];[web][onit]overlay",height,width);
+	av_bprintf(&ctx->graph_desc, "[web];[1]format=yuv420p,scale=%d:%d[onit];[web][onit]overlay=%d:%d",height,width,xpos,ypos);
 	ret = configure_filter(ctx);
 	if(ret < 0)
 	{

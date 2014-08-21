@@ -3,8 +3,8 @@
 using namespace std;
 int main(int argc, char*argv[])
 {
-	int xpos = 10;
-	int ypos = 10;
+	int xpos = 200;
+	int ypos = 200;
 	int height = 200;
 	int width = 200;
 	int ret = 0;
