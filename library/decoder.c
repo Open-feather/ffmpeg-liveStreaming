@@ -33,21 +33,21 @@ int init_decoder(AVFormatContext **pFormatCtx, char *fname,char *fmt)
 
 	// set avdict option
 	options = NULL;
-
-
+	fprintf(stderr,"fname %s\n",fname);
 	ret = avformat_open_input(pFormatCtx, fname, inputFormat, &options);
 	if(ret < 0)
 	{
 		goto end;
 		ret = -1;
 	}
-
+#if 0
 	// get the camera stream information
 	if(avformat_find_stream_info(*pFormatCtx,NULL) < 0)   
 	{
 		fprintf(stderr,"Error in finding stream infon");
 		return -13;
 	}
+
 	ret = av_find_best_stream(*pFormatCtx,AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0); 
 	if (ret < 0)
 	{
@@ -62,14 +62,17 @@ int init_decoder(AVFormatContext **pFormatCtx, char *fname,char *fmt)
 	if (ret < 0)
 	{
 		fprintf(stderr, "Could not find video stream in camera\n");
-		return ret;
+		goto end;
 	}
+#endif
 end:
+#if 0
 	if(ret < 0)	
 	{
 		dinit_decoder(pFormatCtx,dec_ctx);
 		avformat_close_input(pFormatCtx);
 	}
+#endif
 	return ret;
 
 }

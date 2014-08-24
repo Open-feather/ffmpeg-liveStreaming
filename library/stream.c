@@ -281,6 +281,8 @@ EXPORT void *init_capture(const char*path)
 		ret =-1;
 		goto end;
 	}
+#if 0
+
 	stream = ctx->inputs[0].st;
 	/** Initalize framerate coming from webcam */
 	ctx->video_avg_frame_rate.num = stream->avg_frame_rate.num;
@@ -297,12 +299,16 @@ EXPORT void *init_capture(const char*path)
 	}
 
 	ctx->OutFrame         = av_frame_alloc();
+#endif
 end:
+/*
 	if(ret < 0)
 	{
 		stop_capture((void*)ctx);
 		return NULL;
 	}
+*/
+
 	return ctx;
 }
 
@@ -384,6 +390,7 @@ EXPORT int start_capture(void *actx)
 
 	while(1)
 	{
+		AVCodecContext *dec_ctx = input->dec_ctx;
 		input = get_best_input(ctx);
 		if(!input)
 		{
@@ -393,7 +400,7 @@ EXPORT int start_capture(void *actx)
 		if (ic->start_time != AV_NOPTS_VALUE)
 			start_time = ic->start_time;
 
-		AVCodecContext *dec_ctx = input->dec_ctx;
+		
 		ret = get_input_packet(input,&packet);
 		if (ret == AVERROR(EAGAIN))
 		{
