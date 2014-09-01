@@ -1,11 +1,15 @@
 #define COBJMACROS
 #include "platform.h"
+
+#if defined (__MINGW32__) || defined (_MSC_VER)
 #include <direct.h>
 #include <Windows.h>
 #include <winnt.h>
 #include <winbase.h>
-#include <pthread.h>
 #include <dshow.h>
+#endif
+#include <pthread.h>
+#include <string.h>
 void get_devicename(char *str,int index)
 {
 
@@ -79,7 +83,7 @@ end:
 	CoUninitialize();
 
 #else
-	strcpy(str,"0");
+	strcpy(str,"/dev/video0");
 #endif
 	return;
 }

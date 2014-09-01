@@ -35,4 +35,5 @@
 #define CAM_DEVICE_NAME "/dev/video0"
 #endif
 
+void get_devicename(char *str,int index);
 #endif
