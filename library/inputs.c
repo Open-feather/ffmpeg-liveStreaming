@@ -53,12 +53,8 @@ int configure_input(struct liveStream *ctx, char *name,enum InputType type)
 
 	if(IN_WEBCAM == type )
 	{
-		if (name == NULL)
-			name = CAM_DEVICE_NAME;
 		fmt = CAM_DRIVER;
-
 	}
-
 	ret = init_decoder(&ic,name,fmt);
 	if(ret < 0)
 	{
