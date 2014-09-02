@@ -60,7 +60,7 @@ int configure_input(struct liveStream *ctx, char *name,enum InputType type)
 	{
 		return -1;
 	}
-#if 0
+
 	ret = av_find_best_stream(ic,AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0);
 	st = ic->streams[ret];
 	dec_ctx = st->codec;
@@ -106,7 +106,6 @@ int configure_input(struct liveStream *ctx, char *name,enum InputType type)
 			prev_input->next = NULL;
 		return -1;
 	}
-#endif
 	return 0;
 }
 
