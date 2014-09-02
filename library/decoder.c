@@ -33,7 +33,6 @@ int init_decoder(AVFormatContext **pFormatCtx, char *fname,char *fmt)
 
 	// set avdict option
 	options = NULL;
-	fprintf(stderr,"fname %s\n",fname);
 	ret = avformat_open_input(pFormatCtx, fname, inputFormat, &options);
 	if(ret < 0)
 	{
