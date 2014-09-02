@@ -1,5 +1,5 @@
-#include "platform.h"
 #define COBJMACROS
+#include "platform.h"
 #include <direct.h>
 #include <Windows.h>
 #include <winnt.h>
@@ -11,10 +11,12 @@ void get_devicename(char *str,int index)
 
 #if defined (__MINGW32__) || defined (_MSC_VER)
 	int ret;
+	char *name = malloc(MAX_LEN);
 	ICreateDevEnum *devenum = NULL;
 	IEnumMoniker *classenum = NULL;
 	IMoniker *m = NULL;
 	int i = 0;
+	*name = '\0';
 
 	/** Initialize COM  */
 	ret = CoInitialize(NULL);
@@ -58,10 +60,11 @@ void get_devicename(char *str,int index)
 			printf("IPropertyBag_Read failed\n");
 			goto fail;
 		}
-		WideCharToMultiByte(CP_UTF8, 0, var.bstrVal, -1, str, MAX_LEN, 0, 0);
-		printf("%s\n",str);
-
+		WideCharToMultiByte(CP_UTF8, 0, var.bstrVal, -1, name, MAX_LEN, 0, 0);
+		snprintf(str,MAX_LEN,"video=%s",name);
 fail:
+		free(name);
+
 		if (bag)
 			IPropertyBag_Release(bag);
 		IMoniker_Release(m);

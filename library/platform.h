@@ -13,9 +13,6 @@
 
 #define EXPORT __declspec(dllexport)
 #include <direct.h>
-//#include <Windows.h>
-//#include <winnt.h>
-//#include <winbase.h>
 #define GetCurrentDir _getcwd
 
 /** Define Pos clock */
@@ -34,7 +31,7 @@
 #define EXPORT __declspec(dllexport)
 #else
 #define EXPORT
-#defin	e CAM_DRIVER "v4l2"
+#define CAM_DRIVER "v4l2"
 #define CAM_DEVICE_NAME "/dev/video0"
 #endif
 
