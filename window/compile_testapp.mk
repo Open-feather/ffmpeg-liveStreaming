@@ -1,4 +1,4 @@
-SRC=..\test.cpp
+SRC=..\test\test.cpp
 INCLUDE=/I..\library /I"C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\include"
 
 all:
