@@ -260,6 +260,7 @@ EXPORT void *init_capture(const char*path)
 {
 
 	int ret = 0;
+	int i = 0;
 	// structure with ffmpeg variables
 	struct liveStream *ctx;
 	AVStream *stream = NULL;
@@ -269,45 +270,65 @@ EXPORT void *init_capture(const char*path)
 	if(ctx == NULL)
 	{
 		fprintf(stderr,"Error in web play struct alloc\n");
-		ret =-1;
-		goto end;
+		return NULL;
 	}
 	memset(ctx, 0, sizeof(*ctx));
 
 	init_ffmpeg();
-	ret = configure_input(ctx,CAM_DEVICE_NAME,IN_WEBCAM);
-	if(ret <0)
+
+	for(i = 0;ret >= 0;i++)
 	{
-		ret =-1;
-		goto end;
+
+		char *fname = malloc(MAX_LEN);
+		*fname = '\0';
+		get_devicename(fname, i);
+		if(*fname == 0)
+		{
+			fprintf(stderr, "Please Attach Webcam device\n");
+			ret = -1;
+			break;
+		}
+
+		ret = configure_input(ctx, fname, IN_WEBCAM);
+		if (ret < 0)
+		{
+			ret = -1;
+			fprintf(stderr, "Error while configuring Input %s\n",fname);
+		}
+		else
+			break;
+		free(fname);
 	}
-#if 0
+	if(ret < 0)
+		goto end;
 
 	stream = ctx->inputs[0].st;
 	/** Initalize framerate coming from webcam */
 	ctx->video_avg_frame_rate.num = stream->avg_frame_rate.num;
 	ctx->video_avg_frame_rate.den = stream->avg_frame_rate.den;
 
-	init_filters(ctx);
+	ret = init_filters(ctx);
+	if(ret < 0)
+	{
+		fprintf(stderr,"unable to initialize filter\n");
+		goto end;
+	}
 
 	ret = init_encoder(ctx, path);
 	if(ret < 0)
 	{
-		printf("Error in encoder init\n");
+		printf("Error in encoder init for %s\n",path);
 		ret =-1;
 		goto end;
 	}
 
-	ctx->OutFrame         = av_frame_alloc();
-#endif
+	ctx->OutFrame = av_frame_alloc();
 end:
-/*
 	if(ret < 0)
 	{
 		stop_capture((void*)ctx);
 		return NULL;
 	}
-*/
 
 	return ctx;
 }

@@ -21,6 +21,7 @@ extern "C" {
 #include <libavutil/threadmessage.h>
 #include <libavutil/time.h>
 #include <libavutil/bprint.h>
+#include <libavdevice/avdevice.h>
 #ifdef __cplusplus
 }
 #endif
