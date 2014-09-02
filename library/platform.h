@@ -1,8 +1,16 @@
+#ifndef _PLATFORM_H
+#define PLATFORM_H
+
+#define MAX_LEN 128
+
+#if defined (__MINGW32__) || defined (_MSC_VER)
+#define CAM_DRIVER "dshow"
+#endif
+
 #ifdef _MSC_VER
 #define inline __inline
 #define snprintf(str,size,format,...) _snprintf_s(str,size-1,_TRUNCATE,format,__VA_ARGS__)
-#define CAM_DRIVER "dshow"
-#define CAM_DEVICE_NAME "video=BisonCam, NB Pro"
+
 #define EXPORT __declspec(dllexport)
 #include <direct.h>
 //#include <Windows.h>
@@ -23,11 +31,11 @@
 #define CLOCK_BOOTTIME_ALARM 9
 
 #elif MINGW
-#define CAM_DRIVER "vfwcap"
-#define CAM_DEVICE_NAME "0"
 #define EXPORT __declspec(dllexport)
 #else
 #define EXPORT
 #defin	e CAM_DRIVER "v4l2"
 #define CAM_DEVICE_NAME "/dev/video0"
+#endif
+
 #endif

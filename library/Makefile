@@ -1,6 +1,6 @@
 CFLAGS= -Wall -ggdb3 -std=gnu99
 FFMPEG_LIBS=libavfilter
-SRC=decoder.c stream.c filter.c inputs.c
+SRC=decoder.c stream.c filter.c inputs.c platform.c
 
 #default library name
 LIB=libstream.so
@@ -17,6 +17,8 @@ endif
 
 ifneq (, $(findstring mingw, $(SYS)))
 FFMPEG_LIBS= libavdevice libavformat libavfilter libavcodec libswresample libswscale libavutil
+#DSHOW LIBS dependency
+LIBS+= -lpsapi -lole32 -lstrmiids -luuid
 LIBS += -shared -pthread
 LIBS += $(shell pkg-config --libs $(FFMPEG_LIBS))
 CFLAGS += $(shell pkg-config --cflags $(FFMPEG_LIBS))

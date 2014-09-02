@@ -1,16 +1,84 @@
+#include "platform.h"
+#define COBJMACROS
 #include <direct.h>
 #include <Windows.h>
 #include <winnt.h>
 #include <winbase.h>
 #include <pthread.h>
-void get_devicename(char *str)
+#include <dshow.h>
+void get_devicename(char *str,int index)
 {
-	#ifdef _MSC_VER
-	
-	#else
-	
-	#endif
-	return NULL;
+
+#if defined (__MINGW32__) || defined (_MSC_VER)
+	int ret;
+	ICreateDevEnum *devenum = NULL;
+	IEnumMoniker *classenum = NULL;
+	IMoniker *m = NULL;
+	int i = 0;
+
+	/** Initialize COM  */
+	ret = CoInitialize(NULL);
+	if (ret != S_OK)
+	{
+		printf("Could not Initialize COM\n");
+		goto end;
+	}
+
+	ret = CoCreateInstance(&CLSID_SystemDeviceEnum, NULL, CLSCTX_INPROC_SERVER,
+			&IID_ICreateDevEnum, (void **) &devenum);
+	if (ret != S_OK)
+	{
+		printf("Could not enumerate system devices.\n");
+		goto end;
+	}
+	ret = ICreateDevEnum_CreateClassEnumerator(devenum,
+			&CLSID_VideoInputDeviceCategory, (IEnumMoniker **) &classenum, 0);
+	if (ret != S_OK)
+	{
+		printf("Could not enumerate video devices.\n");
+		goto end;
+	}
+
+	for (i = 0;i <= index && IEnumMoniker_Next(classenum, 1, &m, NULL) == S_OK;i++)
+	{
+		IPropertyBag *bag = NULL;
+		VARIANT var;
+
+		ret = IMoniker_BindToStorage(m, 0, 0, &IID_IPropertyBag, (void *) &bag);
+		if (ret != S_OK)
+		{
+			printf("IMoniker_BindToStorage failed\n");
+			goto fail;
+		}
+
+		var.vt = VT_BSTR;
+		ret = IPropertyBag_Read(bag, L"FriendlyName", &var, NULL);
+		if (ret != S_OK)
+		{
+			printf("IPropertyBag_Read failed\n");
+			goto fail;
+		}
+		WideCharToMultiByte(CP_UTF8, 0, var.bstrVal, -1, str, MAX_LEN, 0, 0);
+		printf("%s\n",str);
+
+fail:
+		if (bag)
+			IPropertyBag_Release(bag);
+		IMoniker_Release(m);
+
+	}
+end:
+	if(classenum)
+		IEnumMoniker_Release(classenum);
+	if (devenum)
+		ICreateDevEnum_Release(devenum);
+
+	CoUninitialize();
+
+#else
+	strcpy(str,"0");
+#endif
+	return;
 }
 #ifdef _MSC_VER
 LARGE_INTEGER getFILETIMEoffset()
