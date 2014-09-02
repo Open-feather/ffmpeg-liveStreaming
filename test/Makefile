@@ -1,6 +1,6 @@
 
-CXXFLAGS=-I../library/
-LDFLAGS= -ldl -pthread
+CXXFLAGS=-g -I../library/
+LDFLAGS= -pthread
 SRC= test.cpp
 
 #OBJS=$(addsuffix .o,$(EXAMPLES))
