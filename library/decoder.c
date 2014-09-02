@@ -39,7 +39,7 @@ int init_decoder(AVFormatContext **pFormatCtx, char *fname,char *fmt)
 		goto end;
 		ret = -1;
 	}
-#if 0
+
 	// get the camera stream information
 	if(avformat_find_stream_info(*pFormatCtx,NULL) < 0)   
 	{
@@ -63,15 +63,12 @@ int init_decoder(AVFormatContext **pFormatCtx, char *fname,char *fmt)
 		fprintf(stderr, "Could not find video stream in camera\n");
 		goto end;
 	}
-#endif
 end:
-#if 0
 	if(ret < 0)	
 	{
 		dinit_decoder(pFormatCtx,dec_ctx);
 		avformat_close_input(pFormatCtx);
 	}
-#endif
 	return ret;
 
 }
