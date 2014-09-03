@@ -16,7 +16,7 @@ int main(int argc, char*argv[])
 		return -1;
 	}
 
-/*	set_image(ctx,"test.jpg",xpos,ypos,height,width);
+	set_image(ctx,"test.jpg",xpos,ypos,height,width);
 
 	ret = start_capture(ctx);
 	if(ret < 0)
@@ -25,6 +25,6 @@ int main(int argc, char*argv[])
 	}
 
 	stop_capture(ctx);
-*/
+
 
 }

@@ -304,8 +304,23 @@ EXPORT void *init_capture(const char*path)
 
 	stream = ctx->inputs[0].st;
 	/** Initalize framerate coming from webcam */
-	ctx->video_avg_frame_rate.num = stream->avg_frame_rate.num;
-	ctx->video_avg_frame_rate.den = stream->avg_frame_rate.den;
+	if(stream->avg_frame_rate.num && stream->avg_frame_rate.den)
+	{
+		ctx->video_avg_frame_rate.num = stream->avg_frame_rate.num;
+		ctx->video_avg_frame_rate.den = stream->avg_frame_rate.den;
+	}
+	else if(stream->r_frame_rate.num && stream->r_frame_rate.den )
+	{
+		ctx->video_avg_frame_rate.num = stream->r_frame_rate.num;
+		ctx->video_avg_frame_rate.den = stream->r_frame_rate.den;
+	}
+	else
+	{
+		fprintf(stderr, "Unable to take out fps from webcam assuming 30fps\n");
+		ctx->video_avg_frame_rate.num = 30;
+		ctx->video_avg_frame_rate.den = 1;
+
+	}
 
 	ret = init_filters(ctx);
 	if(ret < 0)
@@ -411,12 +426,13 @@ EXPORT int start_capture(void *actx)
 
 	while(1)
 	{
-		AVCodecContext *dec_ctx = input->dec_ctx;
+		AVCodecContext *dec_ctx = NULL;
 		input = get_best_input(ctx);
 		if(!input)
 		{
 			continue;
 		}
+		dec_ctx = input->dec_ctx;
 		ic = input->ic;
 		if (ic->start_time != AV_NOPTS_VALUE)
 			start_time = ic->start_time;
