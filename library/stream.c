@@ -473,6 +473,7 @@ EXPORT int start_capture(void *actx)
 			continue;
 
 
+		av_free_packet(&packet);
 		input->InFrame->pts = av_frame_get_best_effort_timestamp(input->InFrame);
 
 		take_filter_lock(&ctx->filter_lock);
@@ -507,7 +508,6 @@ EXPORT int start_capture(void *actx)
 				ctx->OutFrame->pts = av_rescale_q(ctx->OutFrame->pts, ctx->out_filter->inputs[0]->time_base, ctx->oc->streams[0]->codec->time_base);
 			}
 			nb_frames += ctx->OutFrame->pts - ctx->sync_out_pts;
-			printf("Got frames %d\n",nb_frames);
 			/** drop all frames if extra are provided */
 			if(nb_frames < 0)
 				nb_frames = 1;
@@ -524,7 +524,6 @@ EXPORT int start_capture(void *actx)
 		}
 	}
 	av_frame_unref(input->InFrame);
-	av_free_packet(&packet);
 end:
 	return ret;
 }

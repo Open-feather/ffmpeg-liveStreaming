@@ -131,12 +131,14 @@ int configure_filter(struct liveStream *ctx)
 		}
 		configure_input_filter(ctx, in_id, cur);
 	}
+	avfilter_inout_free(&inputs);
 	ret = configure_output_filter(ctx,outputs);
 	if(ret < 0)
 	{
 		printf("unable to configure output filter\n");
 		return ret;
 	}
+	avfilter_inout_free(&outputs);
 	if ((ret = avfilter_graph_config(ctx->filter_graph, NULL)) < 0)
 		return ret;
 	give_filter_lock(&ctx->filter_lock);
