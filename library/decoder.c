@@ -8,7 +8,7 @@ void dinit_decoder(AVFormatContext **pFormatCtx,AVCodecContext *dec_ctx)
 
 	avformat_close_input(pFormatCtx);
 }
-int init_decoder(AVFormatContext **pFormatCtx, char *fname,char *fmt)
+int init_decoder(AVFormatContext **pFormatCtx,const char *fname,char *fmt)
 {
 	AVInputFormat *inputFormat;
 	AVDictionary *options;

@@ -525,8 +525,10 @@ EXPORT int start_capture(void *actx)
 end:
 	return ret;
 }
-
-EXPORT int set_image(void *actx,char*path, int xpos,int ypos,int height, int width)
+/**
+ * only one image can be set to be overlayed
+ */
+EXPORT int set_image(void *actx,const char*path, int xpos,int ypos,int height, int width)
 {
 	int ret = 0;
 	struct liveStream *ctx = (struct liveStream *)actx;
@@ -548,5 +550,22 @@ EXPORT int set_image(void *actx,char*path, int xpos,int ypos,int height, int wid
 		av_log(NULL,AV_LOG_ERROR,"Unable to configure Filter\n");
 		return -1;
 	}
+	return ret;
+}
+int duplicate_stream(void *ctx,enum DuplicateFormat format)
+{
+	int ret = 0;
+	av_bprintf(&ctx->graph_desc, "[web];[1]format=yuv420p,scale=%d:%d[onit];[web][onit]overlay=%d:%d",height,width,xpos,ypos);
+	ret = configure_filter(ctx);
+	if(ret < 0)
+	{
+		av_log(NULL,AV_LOG_ERROR,"Unable to configure Filter\n");
+		return -1;
+	}
+	return ret;
+}
+int duplicate_overlayed_stream(void *ctx,int xpos, int ypos, int height, int width)
+{
+	int ret = 0;
 	return ret;
 }

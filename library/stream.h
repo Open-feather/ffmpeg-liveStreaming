@@ -2,6 +2,7 @@
 #define _PLAY_WEBCAM
 
 #include "platform.h"
+#include "lib_wrapper.h"
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -38,7 +38,7 @@ static void *input_thread(void *arg)
 	}
 	return NULL;
 }
-int configure_input(struct liveStream *ctx, char *name,enum InputType type)
+int configure_input(struct liveStream *ctx,const char *name,enum InputType type)
 {
 	int ret = 0;
 	int i = 0;
