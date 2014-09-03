@@ -64,7 +64,7 @@ static AVStream *add_webcam_stream(struct liveStream *ctx, AVCodec **codec, enum
         st->time_base.num = ctx->video_avg_frame_rate.den;
         c->time_base.den = ctx->video_avg_frame_rate.num;
         c->time_base.num = ctx->video_avg_frame_rate.den;
-        c->gop_size = ctx->video_avg_frame_rate.num; /* emit one intra frame every twelve frames at most */
+        c->gop_size = ctx->video_avg_frame_rate.num/ctx->video_avg_frame_rate.den; /* emit one intra frame every twelve frames at most */
         c->pix_fmt = STREAM_PIX_FMT;
         if (c->codec_id == AV_CODEC_ID_MPEG1VIDEO)
         {
@@ -200,43 +200,43 @@ end:
  */
 static int write_video_frame(AVFormatContext *oc, AVStream *st, AVFrame *frame)
 {
-        int ret = 0; 
-        AVCodecContext *c = st->codec;
-        int got_packet = 0; 
-        char arr_string[128];
-        AVPacket pkt; 
-        av_init_packet(&pkt);
-        pkt.data = NULL;    // packet data will be allocated by the encoder
-        pkt.size = 0;
+	int ret = 0;
+	AVCodecContext *c = st->codec;
+	int got_packet = 0;
+	char arr_string[128];
+	AVPacket pkt;
+	av_init_packet(&pkt);
+	pkt.data = NULL;    // packet data will be allocated by the encoder
+	pkt.size = 0;
 
 	frame->pict_type = AV_PICTURE_TYPE_NONE;
-        /* encode the image */
-        ret = avcodec_encode_video2(c, &pkt, frame, &got_packet);
-        if (ret < 0) 
-        {    
-                av_log(NULL, AV_LOG_ERROR, "Error encoding video frame: %s\n",
-                                av_make_error_string(arr_string, 128, ret));
-                return -1;
-        }    
-        /* If size is zero, it means the image was buffered. */
-        if (!ret && got_packet && pkt.size)
-        {    
-                pkt.stream_index = st->index;
+	/* encode the image */
+	ret = avcodec_encode_video2(c, &pkt, frame, &got_packet);
+	if (ret < 0)
+	{
+		av_log(NULL, AV_LOG_ERROR, "Error encoding video frame: %s\n",
+				av_make_error_string(arr_string, 128, ret));
+		return -1;
+	}
+	/* If size is zero, it means the image was buffered. */
+	if (!ret && got_packet && pkt.size)
+	{
+		pkt.stream_index = st->index;
 
-                /* Write the compressed frame to the media file. */
-                ret = av_interleaved_write_frame(oc, &pkt);
-        }    
-        else 
-        {    
-                ret = 0; 
-        }    
-        if (ret != 0)
-        {    
-                av_log(NULL, AV_LOG_ERROR, "Error while writing video frame: %s\n",
-                                av_make_error_string(arr_string, 128, ret));
-                return -1;
-        }
-        return 0;
+		/* Write the compressed frame to the media file. */
+		ret = av_interleaved_write_frame(oc, &pkt);
+	}
+	else
+	{
+		ret = 0;
+	}
+	if (ret != 0)
+	{
+		av_log(NULL, AV_LOG_ERROR, "Error while writing video frame: %s\n",
+				av_make_error_string(arr_string, 128, ret));
+		return -1;
+	}
+	return 0;
 }
 
 EXPORT void stop_capture(void *actx)
@@ -437,7 +437,6 @@ EXPORT int start_capture(void *actx)
 		if (ic->start_time != AV_NOPTS_VALUE)
 			start_time = ic->start_time;
 
-		
 		ret = get_input_packet(input,&packet);
 		if (ret == AVERROR(EAGAIN))
 		{
@@ -508,6 +507,7 @@ EXPORT int start_capture(void *actx)
 				ctx->OutFrame->pts = av_rescale_q(ctx->OutFrame->pts, ctx->out_filter->inputs[0]->time_base, ctx->oc->streams[0]->codec->time_base);
 			}
 			nb_frames += ctx->OutFrame->pts - ctx->sync_out_pts;
+			printf("Got frames %d\n",nb_frames);
 			/** drop all frames if extra are provided */
 			if(nb_frames < 0)
 				nb_frames = 1;
