@@ -15,7 +15,6 @@ int main(int argc, char*argv[])
 		cout<<"Please verify your camera is On"<<endl;
 		return -1;
 	}
-
 	set_image(ctx,"test.jpg",xpos,ypos,height,width);
 
 	ret = start_capture(ctx);
@@ -23,7 +22,6 @@ int main(int argc, char*argv[])
 	{
 		cout<<"error while capturing video"<<endl;
 	}
-
 	stop_capture(ctx);
 
 

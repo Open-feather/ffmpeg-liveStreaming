@@ -262,9 +262,8 @@ EXPORT void *init_capture(const char*path)
 	int ret = 0;
 	int i = 0;
 	// structure with ffmpeg variables
-	struct liveStream *ctx;
+	struct liveStream *ctx = NULL;
 	AVStream *stream = NULL;
-
 	// allocation of Live Stream structure
 	ctx = malloc(sizeof(struct liveStream));
 	if(ctx == NULL)
@@ -276,10 +275,10 @@ EXPORT void *init_capture(const char*path)
 
 	init_ffmpeg();
 
+	char *fname = malloc(MAX_LEN);
 	for(i = 0;ret >= 0;i++)
 	{
 
-		char *fname = malloc(MAX_LEN);
 		*fname = '\0';
 		get_devicename(fname, i);
 		if(*fname == 0)
@@ -297,10 +296,10 @@ EXPORT void *init_capture(const char*path)
 		}
 		else
 			break;
-		free(fname);
 	}
 	if(ret < 0)
 		goto end;
+	free(fname);
 
 	stream = ctx->inputs[0].st;
 	/** Initalize framerate coming from webcam */
@@ -344,7 +343,6 @@ end:
 		stop_capture((void*)ctx);
 		return NULL;
 	}
-
 	return ctx;
 }
 
@@ -416,6 +414,7 @@ EXPORT int start_capture(void *actx)
 	AVFormatContext *ic;
 	long long start_time;
 	struct lsInput* input = NULL;
+	int count = 0;
 
 	if(!ctx)
 	{
@@ -522,6 +521,9 @@ EXPORT int start_capture(void *actx)
 			}
 			av_frame_unref(ctx->OutFrame);
 		}
+		if(count > 5)
+			break;
+		count++;
 	}
 	av_frame_unref(input->InFrame);
 end:
@@ -531,7 +533,6 @@ end:
 EXPORT int set_image(void *actx,char*path, int xpos,int ypos,int height, int width)
 {
 	int ret = 0;
-	char*str = NULL;
 	struct liveStream *ctx = (struct liveStream *)actx;
 
 	if(!ctx)
@@ -544,13 +545,6 @@ EXPORT int set_image(void *actx,char*path, int xpos,int ypos,int height, int wid
 		return ret;
 	}
 
-	str = malloc(ctx->graph_desc.len +1);
-	if(!str)
-	{
-		av_log(NULL,AV_LOG_ERROR,"No memory Available\n");
-		return -1;
-	}
-	strcpy(str,ctx->graph_desc.str);
 	av_bprintf(&ctx->graph_desc, "[web];[1]format=yuv420p,scale=%d:%d[onit];[web][onit]overlay=%d:%d",height,width,xpos,ypos);
 	ret = configure_filter(ctx);
 	if(ret < 0)
