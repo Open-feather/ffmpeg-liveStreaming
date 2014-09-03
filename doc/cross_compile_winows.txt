@@ -1,0 +1,23 @@
+Download MXE on your harddisk
+
+Install cross compiler usingi.
+NOte: things are hard in mxe for non root user
+make gcc
+
+Install ffmpeg to install dependency
+make ffmpeg
+
+export mxe bin path in enviorment variable
+export PATH=$PATH:/home/a141982112/work/anshul/Project/mxe/usr/bin/
+
+configure using similar type of command
+/configure --enable-memalign-hack  --arch=x86   --target-os=mingw32    --cross-prefix=i686-pc-mingw32-  --pkg-config=pkg-config --prefix=/home/a141982112/work/anshul/Project/ffmpeg-liveStreaming/ffmpeg_lib --enable-gpl --enable-libx264
+make
+make install
+
+
+Export path of pkg-config of ffmpeg
+export PKG_CONFIG_PATH=/home/a141982112/work/anshul/Project/ffmpeg-liveStreaming/ffmpeg_lib/lib/pkgconfig/
+
+Compile Stream library
+make CC=i686-pc-mingw32-gcc

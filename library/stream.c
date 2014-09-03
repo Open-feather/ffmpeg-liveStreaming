@@ -414,7 +414,6 @@ EXPORT int start_capture(void *actx)
 	AVFormatContext *ic;
 	long long start_time;
 	struct lsInput* input = NULL;
-	int count = 0;
 
 	if(!ctx)
 	{
@@ -521,9 +520,6 @@ EXPORT int start_capture(void *actx)
 			}
 			av_frame_unref(ctx->OutFrame);
 		}
-		if(count > 5)
-			break;
-		count++;
 	}
 	av_frame_unref(input->InFrame);
 end:
