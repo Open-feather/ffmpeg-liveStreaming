@@ -11,6 +11,7 @@ void *ask4image(void*arg)
 	int height = 200;
 	int width = 200;
 	set_image(arg,"test.jpg",xpos,ypos,height,width);
+	return NULL;
 }
 int main(int argc, char*argv[])
 {
