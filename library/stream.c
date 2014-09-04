@@ -532,7 +532,6 @@ EXPORT int set_image(void *actx,const char*path, int xpos,int ypos,int height, i
 {
 	int ret = 0;
 	struct liveStream *ctx = (struct liveStream *)actx;
-
 	if(!ctx)
 		return -1;
 
@@ -543,7 +542,7 @@ EXPORT int set_image(void *actx,const char*path, int xpos,int ypos,int height, i
 		return ret;
 	}
 
-	av_bprintf(&ctx->graph_desc, "[web];[1]format=yuv420p,scale=%d:%d[onit];[web][onit]overlay=%d:%d",height,width,xpos,ypos);
+	av_bprintf(&ctx->graph_desc, ";[1]format=yuv420p,scale=%d:%d[onit];[bg][onit]overlay=%d:%d",height,width,xpos,ypos);
 	ret = configure_filter(ctx);
 	if(ret < 0)
 	{
@@ -552,10 +551,23 @@ EXPORT int set_image(void *actx,const char*path, int xpos,int ypos,int height, i
 	}
 	return ret;
 }
-int duplicate_stream(void *ctx,enum DuplicateFormat format)
+EXPORT int duplicate_stream(void *actx,enum DuplicateFormat format)
 {
 	int ret = 0;
-	av_bprintf(&ctx->graph_desc, "[web];[1]format=yuv420p,scale=%d:%d[onit];[web][onit]overlay=%d:%d",height,width,xpos,ypos);
+	struct liveStream *ctx = (struct liveStream *)actx;
+	if(!ctx)
+		return -1;
+
+	av_bprint_init(&ctx->graph_desc, 0, 1);
+	if(format == SIDE_BY_SIDE)
+		av_bprintf(&ctx->graph_desc, "[0]format=yuv420p,scale=iw/2:ih,pad=iw*2:ih[main];[main]split[dup1][dup2];[dup1][dup2]overlay=W/2:0[bg]");
+	else if ( format == TOP_N_BOTTOM)
+		av_bprintf(&ctx->graph_desc, "[0]format=yuv420p,scale=iw:ih/2,pad=iw:ih*2[main];[main]split[dup1][dup2];[dup1][dup2]overlay=0:H/2[bg]");
+	else
+	{
+		av_log(NULL,AV_LOG_ERROR,"Invalid format Speified only side_by_side and top_n_bottom supported\n");
+		return -1;
+	}
 	ret = configure_filter(ctx);
 	if(ret < 0)
 	{
@@ -564,8 +576,24 @@ int duplicate_stream(void *ctx,enum DuplicateFormat format)
 	}
 	return ret;
 }
-int duplicate_overlayed_stream(void *ctx,int xpos, int ypos, int height, int width)
+EXPORT int duplicate_overlayed_stream(void *actx,int xpos, int ypos, int height, int width)
 {
 	int ret = 0;
+	struct liveStream *ctx = (struct liveStream *)actx;
+	if(!ctx)
+		return -1;
+
+	av_bprint_init(&ctx->graph_desc, 0, 1);
+	av_bprintf(&ctx->graph_desc, "[0]format=yuv420p,scale=iw:ih,split[dup1][dup2];"
+		"[dup2]scale=%d:%d[scaled_dup2];"
+		"[dup1][scaled_dup2]overlay=%d:%d[bg]",
+		width, height,
+		xpos, ypos);
+	ret = configure_filter(ctx);
+	if(ret < 0)
+	{
+		av_log(NULL,AV_LOG_ERROR,"Unable to configure Filter\n");
+		return -1;
+	}
 	return ret;
 }

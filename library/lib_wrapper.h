@@ -13,8 +13,8 @@ void *init_capture(const char*path);
 void stop_capture(void *ctx);
 
 int set_image(void *actx,const char*path, int xpos, int ypos, int height, int width);
-int duplicate_stream(void *ctx,enum DuplicateFormat format);
-int duplicate_overlayed_stream(void *ctx,int xpos, int ypos, int height, int width);
+int duplicate_stream(void *actx,enum DuplicateFormat format);
+int duplicate_overlayed_stream(void *actx,int xpos, int ypos, int height, int width);
 
 #ifdef __cplusplus
 }

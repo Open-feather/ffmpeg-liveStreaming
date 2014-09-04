@@ -154,7 +154,7 @@ int init_filters(struct liveStream *ctx)
 		av_log(NULL,AV_LOG_ERROR,"Unable to init filter locks\n");
 	}
 	av_bprint_init(&ctx->graph_desc, 0, 1);
-	av_bprintf(&ctx->graph_desc, "[0]format=yuv420p,scale=%d:%d",STREAM_WIDTH,STREAM_HEIGHT);
+	av_bprintf(&ctx->graph_desc, "[0]format=yuv420p,scale=%d:%d[bg]",STREAM_WIDTH,STREAM_HEIGHT);
 
 	ret = configure_filter(ctx);
 	if(ret <  0)
