@@ -375,6 +375,50 @@ static int output_packet(struct lsInput *input,const AVPacket *pkt)
 
 	return ret;
 }
+int reap_filter(struct liveStream *ctx)
+{
+	int ret = 0;
+	/* pull filtered frames from the filtergraph */
+	while (1)
+	{
+		int i = 0;
+		int nb_frames = 1;
+		take_filter_lock(&ctx->filter_lock);
+		ret = av_buffersink_get_frame_flags(ctx->out_filter, ctx->OutFrame,AV_BUFFERSINK_FLAG_NO_REQUEST);
+		give_filter_lock(&ctx->filter_lock);
+		if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+		{
+			ret = 0;
+			break;
+		}
+		if (ret < 0)
+		{
+			av_log(NULL, AV_LOG_ERROR, "nothing in buffer sink\n");
+			ret = -1;
+			break;
+		}
+		if (ctx->OutFrame->pts != AV_NOPTS_VALUE)
+		{
+			ctx->OutFrame->pts = av_rescale_q(ctx->OutFrame->pts, ctx->out_filter->inputs[0]->time_base, ctx->oc->streams[0]->codec->time_base);
+		}
+		nb_frames += ctx->OutFrame->pts - ctx->sync_out_pts;
+		/** drop all frames if extra are provided */
+		if(nb_frames < 0)
+			nb_frames = 1;
+		/** Some time insane gap is seen,remove that in ffmpeg itself */
+		if(nb_frames > 15)
+			nb_frames = 1;
+
+		for( i = 0;i < nb_frames;i++)
+		{
+			ctx->OutFrame->pts = ctx->sync_out_pts;
+			write_video_frame(ctx->oc,ctx->oc->streams[0],ctx->OutFrame);
+			ctx->sync_out_pts++;
+		}
+		av_frame_unref(ctx->OutFrame);
+	}
+	return ret;
+}
 struct lsInput* get_best_input(struct liveStream *ctx)
 {
 	struct lsInput* input = NULL;
@@ -387,7 +431,9 @@ struct lsInput* get_best_input(struct liveStream *ctx)
 	ret = avfilter_graph_request_oldest(ctx->filter_graph);
 	give_filter_lock(&ctx->filter_lock);
 	if(ret >= 0)
-		av_log(NULL,AV_LOG_ERROR,"possible loss of data\n");
+	{
+		reap_filter(ctx);
+	}
 
 	for(input = ctx->inputs;input;input = input->next)
 	{
@@ -481,45 +527,8 @@ EXPORT int start_capture(void *actx)
 					"Error while feeding the filtergraph\n");
 		}
 		give_filter_lock(&ctx->filter_lock);
+		reap_filter(ctx);
 
-		/* pull filtered frames from the filtergraph */
-		while (1)
-		{
-			int i = 0;
-			int nb_frames = 1;
-			take_filter_lock(&ctx->filter_lock);
-			ret = av_buffersink_get_frame_flags(ctx->out_filter, ctx->OutFrame,AV_BUFFERSINK_FLAG_NO_REQUEST);
-			give_filter_lock(&ctx->filter_lock);
-			if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
-			{
-				ret = 0;
-				break;
-			}
-			if (ret < 0)
-			{
-				av_log(NULL, AV_LOG_ERROR, "nothing in buffer sink\n");
-				ret = -1;
-				break;
-			}
-			if (ctx->OutFrame->pts != AV_NOPTS_VALUE)
-			{
-				ctx->OutFrame->pts = av_rescale_q(ctx->OutFrame->pts, ctx->out_filter->inputs[0]->time_base, ctx->oc->streams[0]->codec->time_base);
-			}
-			nb_frames += ctx->OutFrame->pts - ctx->sync_out_pts;
-			/** drop all frames if extra are provided */
-			if(nb_frames < 0)
-				nb_frames = 1;
-			/** Some time insane gap is seen,remove that in ffmpeg itself */
-			if(nb_frames > 15)
-				nb_frames = 1;
-			for( i = 0;i < nb_frames;i++)
-			{
-				ctx->OutFrame->pts = ctx->sync_out_pts;
-				write_video_frame(ctx->oc,ctx->oc->streams[0],ctx->OutFrame);
-				ctx->sync_out_pts++;
-			}
-			av_frame_unref(ctx->OutFrame);
-		}
 	}
 	av_frame_unref(input->InFrame);
 end:
@@ -547,7 +556,7 @@ EXPORT int set_image(void *actx,const char*path, int xpos,int ypos,int height, i
 	if(ret < 0)
 	{
 		av_log(NULL,AV_LOG_ERROR,"Unable to configure Filter\n");
-		return -1;
+		return ret;
 	}
 	return ret;
 }
@@ -572,7 +581,7 @@ EXPORT int duplicate_stream(void *actx,enum DuplicateFormat format)
 	if(ret < 0)
 	{
 		av_log(NULL,AV_LOG_ERROR,"Unable to configure Filter\n");
-		return -1;
+		return ret;
 	}
 	return ret;
 }
@@ -593,7 +602,25 @@ EXPORT int duplicate_overlayed_stream(void *actx,int xpos, int ypos, int height,
 	if(ret < 0)
 	{
 		av_log(NULL,AV_LOG_ERROR,"Unable to configure Filter\n");
-		return -1;
+		return ret;
 	}
 	return ret;
+}
+EXPORT int pause_stream(void *actx, long long duration)
+{
+	int ret = 0;
+	struct liveStream *ctx = (struct liveStream *)actx;
+	if(!ctx)
+		return -1;
+	//av_bprintf(&ctx->graph_desc, ";color=black:duration=%ld:s=%dx%d[onit];[bg][onit]overlay=eof_action=pass",duration, STREAM_WIDTH, STREAM_HEIGHT);
+	//av_bprintf(&ctx->graph_desc, ";color=white:duration=100:s=50x50[onit];[bg][onit]overlay",duration);
+	av_bprintf(&ctx->graph_desc, ";color=white:duration=8600:s=50x50[onit];[bg][onit]overlay=eof_action=pass");
+	ret = configure_filter(ctx);
+	if(ret < 0)
+	{
+		av_log(NULL,AV_LOG_ERROR,"Unable to configure Filter\n");
+		return -1;
+	}
+
+	return 0;
 }

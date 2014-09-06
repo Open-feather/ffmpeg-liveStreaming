@@ -17,7 +17,8 @@ int main(int argc, char*argv[])
 	}
 //	set_image(ctx,"test.jpg",xpos,ypos,height,width);
 //	duplicate_stream(ctx,TOP_N_BOTTOM);
-	duplicate_overlayed_stream(ctx,10,10,200,200);
+//	duplicate_overlayed_stream(ctx,10,10,200,200);
+	pause_stream(ctx,100);
 
 	ret = start_capture(ctx);
 	if(ret < 0)
