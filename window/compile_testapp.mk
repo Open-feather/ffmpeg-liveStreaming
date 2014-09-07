@@ -4,6 +4,8 @@ PTHREAD_LIB= libpthreadGC2.a
 
 TEST_PROGRAM=test.exe multi_thread_test.exe
 
+all:$(TEST_PROGRAM)
+
 test.obj:..\test\test.cpp
 	$(CXX) /EHsc /c $(INCLUDE) $**
 
@@ -15,9 +17,6 @@ test.exe: test.obj
 
 multi_thread_test.exe:multi_thread_test.obj
 	$(CXX) /EHsc $(INCLUDE) multi_thread_test.obj /link /LIBPATH:3rdparty\Pre-built.2\lib\x64 libstream_64.lib  $(PTHREAD_LIB)
-
-all:$(TEST_PROGRAM)
-
 
 
 clean:
