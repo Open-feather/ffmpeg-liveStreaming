@@ -612,9 +612,8 @@ EXPORT int pause_stream(void *actx, long long duration)
 	struct liveStream *ctx = (struct liveStream *)actx;
 	if(!ctx)
 		return -1;
-	//av_bprintf(&ctx->graph_desc, ";color=black:duration=%ld:s=%dx%d[onit];[bg][onit]overlay=eof_action=pass",duration, STREAM_WIDTH, STREAM_HEIGHT);
-	//av_bprintf(&ctx->graph_desc, ";color=white:duration=100:s=50x50[onit];[bg][onit]overlay",duration);
-	av_bprintf(&ctx->graph_desc, ";color=white:duration=8600:s=50x50[onit];[bg][onit]overlay=eof_action=pass");
+	av_bprintf(&ctx->graph_desc, ";color=black:duration=%ld:s=%dx%d[onit];[bg][onit]overlay=eof_action=pass",duration, STREAM_WIDTH, STREAM_HEIGHT);
+
 	ret = configure_filter(ctx);
 	if(ret < 0)
 	{
