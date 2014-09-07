@@ -23,11 +23,11 @@ all: libstream_32 libstream_64
 	
 libstream_64:
 	$(CC) $(INCLUDE_64) $(INCLUDE) $(SRC) /link /DLL /OUT:$(OUTPUT_64) $(LIB_DIR_64) $(FFMPEG_LIB) $(DSHOW_LIB) $(PTHREAD_LIB)
-	
-libstream_32: 
+
+libstream_32:
 	$(CC) $(INCLUDE) $(INCLUDE_32) $(SRC) /link /DLL  /MACHINE:X64  /OUT:$(OUTPUT_32) $(LIB_DIR_64) $(FFMPEG_LIB)
 
 clean:
-	del *.obj *.exp *.lib
+	del *.obj *.exp *.lib *.dll
 
 
