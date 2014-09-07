@@ -1,13 +1,11 @@
 #ifndef _LIB_WRAPPER_H
 #define _LIB_WRAPPER_H
+#include "constant.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-enum DuplicateFormat
-{
-	SIDE_BY_SIDE,
-	TOP_N_BOTTOM
-};
+
 int start_capture(void *ctx);
 void *init_capture(const char*path);
 void stop_capture(void *ctx);
