@@ -19,6 +19,8 @@ void init_ffmpeg(void)
 	avdevice_register_all();
 	// register all filters
 	avfilter_register_all();
+	//register network
+	avformat_network_init();
 }
 
 
@@ -118,11 +120,9 @@ static int init_encoder(struct liveStream *ctx, const char* oname)
 	AVCodec *video_codec = NULL;
 	AVStream *vst = NULL;
 	AVFormatContext *loc;
-	AVDictionary *options;
-
 
 	/* allocate the output media context */
-	avformat_alloc_output_context2(&ctx->oc, NULL, NULL, oname);
+	avformat_alloc_output_context2(&ctx->oc, NULL, "flv", oname);
 	if (!ctx->oc)
 	{
 		av_log(NULL, AV_LOG_ERROR, "Could not deduce output format\n");
@@ -132,16 +132,6 @@ static int init_encoder(struct liveStream *ctx, const char* oname)
 	//save output context in local context
 	loc = ctx->oc;
 
-	// set wrap around option in hls
-	options = NULL;
-	av_dict_set(&options, "hls_wrap", "5", 0);
-	av_dict_set(&options, "hls_time", "2", 0);
-	ret = av_opt_set_dict2(loc->priv_data, &options, AV_OPT_SEARCH_CHILDREN);
-	if(ret < 0)
-	{
-		av_log(NULL, AV_LOG_WARNING, "unable to wrap hls segment\n");
-	}
- 
 	fmt = loc->oformat;
 	if (fmt->video_codec != AV_CODEC_ID_NONE)
 	{
@@ -178,7 +168,7 @@ static int init_encoder(struct liveStream *ctx, const char* oname)
 			goto end;
 		}
 	}
-	av_dump_format(loc, 0, "output", 1);
+	av_dump_format(loc, 0, "Output", 1);
 	/* Write the stream header, if any. */
 	ret = avformat_write_header(loc, NULL);
 	if (ret < 0)
@@ -612,7 +602,7 @@ EXPORT int pause_stream(void *actx, long long duration)
 	struct liveStream *ctx = (struct liveStream *)actx;
 	if(!ctx)
 		return -1;
-	av_bprintf(&ctx->graph_desc, ";color=black:duration=%ld:s=%dx%d[onit];[bg][onit]overlay=eof_action=pass",duration, STREAM_WIDTH, STREAM_HEIGHT);
+	av_bprintf(&ctx->graph_desc, ";color=black:duration=%lld:s=%dx%d[onit];[bg][onit]overlay=eof_action=pass",duration, STREAM_WIDTH, STREAM_HEIGHT);
 
 	ret = configure_filter(ctx);
 	if(ret < 0)
