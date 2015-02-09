@@ -17,6 +17,8 @@ Download RTMP module
 =====================
 wget https://github.com/arut/nginx-rtmp-module/archive/master.zip
 
+Unzip master.zip 
+
 
 Compile NGINX
 ===============
