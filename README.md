@@ -1,17 +1,9 @@
 ffmpeg-liveStreaming
 ====================
 
-how to use git for project
+To output live stream you need install nginx server from source
 
-git clone https://github.com/Open-feather/ffmpeg-liveStreaming.git
+Download
 
+wget http://nginx.org/download/nginx-1.7.9.tar.gz
 
-cd ffmpeg-liveStreaming
-
-
-do your stuff
-
-git commit -a -m "message"
-
-
-git push
