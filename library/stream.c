@@ -402,6 +402,10 @@ int reap_filter(struct liveStream *ctx)
 		for( i = 0;i < nb_frames;i++)
 		{
 			ctx->OutFrame->pts = ctx->sync_out_pts;
+			if (ctx->OutFrame->pts != AV_NOPTS_VALUE)
+			{
+				ctx->OutFrame->pts = av_rescale_q(ctx->OutFrame->pts, ctx->oc->streams[0]->codec->time_base, ctx->oc->streams[0]->time_base);
+			}
 			write_video_frame(ctx->oc,ctx->oc->streams[0],ctx->OutFrame);
 			ctx->sync_out_pts++;
 		}
