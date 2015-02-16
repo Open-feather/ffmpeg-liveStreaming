@@ -8,9 +8,9 @@ SYS := $(shell $(CC) -dumpmachine)
 ifneq (, $(findstring linux, $(SYS)))
 FFMPEG_LIBS= libavdevice libavformat libavfilter libavcodec libswresample libswscale libavutil
 LIBS= -shared -pthread
-LIBS += -Wl,--whole-archive
+#LIBS += -Wl,--whole-archive
 LIBS += $(shell pkg-config --libs $(FFMPEG_LIBS))
-LIBS += -Wl,--no-whole-archive
+#LIBS += -Wl,--no-whole-archive
 CFLAGS += $(shell pkg-config --cflags $(FFMPEG_LIBS))
 LIB=libstream.so
 endif
@@ -28,7 +28,7 @@ endif
 
 ifneq (, $(findstring cygwin, $(SYS)))
 LIB=libstream.dll
-CXXFLAGS += -DWINDOWS -static-libgcc -static-libstdc++ -I/usr/local/include/
+CXXFLAGS += -g -DWINDOWS -static-libgcc -static-libstdc++ -I/usr/local/include/
 CXX=x86_64-w64-mingw32-g++
 LIBS= -L/usr/lib -L./lib -lavfilter swresample-0.dll -lswscale -lavformat -lavcodec -lavutil -lpostproc -lws2_32 
 
