@@ -23,12 +23,7 @@ void get_devicename(char *str,int index)
 	*name = '\0';
 
 	/** Initialize COM  */
-	ret = CoInitialize(NULL);
-	if (ret != S_OK)
-	{
-		printf("Could not Initialize COM\n");
-		goto end;
-	}
+	CoInitialize(NULL);
 
 	ret = CoCreateInstance(&CLSID_SystemDeviceEnum, NULL, CLSCTX_INPROC_SERVER,
 			&IID_ICreateDevEnum, (void **) &devenum);
@@ -83,7 +78,7 @@ end:
 	CoUninitialize();
 
 #else
-	strcpy(str,"/dev/video0");
+	strcpy(str, LINUX_CAM_DEVICE_NAME);
 #endif
 	return;
 }
