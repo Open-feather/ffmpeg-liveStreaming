@@ -37,7 +37,7 @@ namespace helloworld
 				Console.WriteLine("Please verify your camera is on\n");
 				return -1;
 			}
-			call_duplicate_overlayed_stream(cameraPtr,10,10,200,200);
+			call_duplicate_overlayed_stream(cameraPtr,xpos,ypos,height,width);
 			ret = start_capture(cameraPtr);
 			if(ret<0)
 			{

@@ -24,10 +24,6 @@ namespace duplicate_stream
 		}
         public static int Main(string[] args)
         {
-			int xpos = 200;
-			int ypos = 200;
-			int height = 200;
-			int width = 200;
 			int ret = 0;
 			IntPtr cameraPtr;
 			DuplicateFormat enumFormat = DuplicateFormat.TOP_N_BOTTOM;

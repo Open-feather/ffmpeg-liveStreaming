@@ -20,10 +20,6 @@ namespace steam_video
 		public static extern int stop_capture(IntPtr stopPtr);
 	public static int Main(string[] args)
         {
-			int xpos = 200;
-			int ypos = 200;
-			int height = 200;
-			int width = 200;
 			int ret = 0;
 			IntPtr cameraPtr;
 			cameraPtr =init_capture("rtmp://192.168.1.109/myapp/mystream");
