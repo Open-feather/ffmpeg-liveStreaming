@@ -10,12 +10,13 @@
 #ifdef _MSC_VER
 #define inline __inline
 #define snprintf(str,size,format,...) _snprintf_s(str,size-1,_TRUNCATE,format,__VA_ARGS__)
-
+#define OF_ATTR __stdcall
 #define EXPORT __declspec(dllexport)
 #include <direct.h>
 #define GetCurrentDir _getcwd
 
 /** Define Pos clock */
+
 #define CLOCK_REALTIME 0
 #define CLOCK_MONOTONIC 1
 #define CLOCK_PROCESS_CPUTIME_ID 2
@@ -32,7 +33,7 @@
 #else
 #define EXPORT
 #define CAM_DRIVER "v4l2"
-#define CAM_DEVICE_NAME "/dev/video0"
+#define LINUX_CAM_DEVICE_NAME "/dev/video0"
 #endif
 
 void get_devicename(char *str,int index);

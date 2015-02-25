@@ -3,7 +3,7 @@ FFMPEG_LIB= avcodec.lib avformat.lib avdevice.lib avfilter.lib avutil.lib swresa
 DSHOW_LIB= ole32.lib psapi.lib strmiids.lib uuid.lib
 PTHREAD_LIB=libpthreadGC2.a
 FFMPEG_VERSION_32=ffmpeg-20140822-git-1b5ec6a-win32-dev
-FFMPEG_VERSION_64=ffmpeg-20140822-git-1b5ec6a-win64-dev
+FFMPEG_VERSION_64=ffmpeg-20150204-git-77f326d-win64-dev
 INCLUDE_64= /I3rdparty\$(FFMPEG_VERSION_64)\include /I3rdparty\Pre-built.2\include
 INCLUDE_32= /I3rdparty\$(FFMPEG_VERSION_32)\include /I3rdparty\Pre-built.2\include
 INCLUDE= /I..\library  /I.
@@ -25,7 +25,7 @@ libstream_64:
 	$(CC) $(INCLUDE_64) $(INCLUDE) $(SRC) /link /DLL /OUT:$(OUTPUT_64) $(LIB_DIR_64) $(FFMPEG_LIB) $(DSHOW_LIB) $(PTHREAD_LIB)
 
 libstream_32:
-	$(CC) $(INCLUDE) $(INCLUDE_32) $(SRC) /link /DLL  /MACHINE:X64  /OUT:$(OUTPUT_32) $(LIB_DIR_64) $(FFMPEG_LIB)
+	$(CC) $(INCLUDE) $(INCLUDE_32) $(SRC) /link /DLL /MACHINE:X64  /OUT:$(OUTPUT_32) $(LIB_DIR_64) $(FFMPEG_LIB)
 
 clean:
 	del *.obj *.exp *.lib *.dll
