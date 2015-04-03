@@ -61,7 +61,14 @@ int configure_input(struct liveStream *ctx, const char *name, struct inputCfg *c
 	}
 
 
-	ret = init_decoder(&ic,name,fmt);
+	if ( 1 == cfg->need_decoder)
+	{
+		ret = init_decoder(&ic,name,fmt);
+	}
+	else
+	{
+		ret = init_wo_decoder(&ic, name, fmt);
+	}
 	if(ret < 0)
 	{
 		return -1;
