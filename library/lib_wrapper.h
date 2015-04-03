@@ -15,6 +15,9 @@ int duplicate_stream(void *actx,enum DuplicateFormat format);
 int duplicate_overlayed_stream(void *actx,int xpos, int ypos, int height, int width);
 int pause_stream(void *actx, long long duration);
 
+void *init_bitstream(const char*in, const char *out);
+int start_bitstream(void *actx);
+void stop_bitstream(void *actx);
 #ifdef __cplusplus
 }
 #endif

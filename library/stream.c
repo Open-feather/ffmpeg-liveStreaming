@@ -229,6 +229,50 @@ static int write_video_frame(AVFormatContext *oc, AVStream *st, AVFrame *frame)
 	return 0;
 }
 
+EXPORT void stop_bitstream(void *actx)
+{
+	struct liveStream *ctx = (struct liveStream *)actx;
+	if (ctx)
+	{
+		free(ctx);
+	}
+}
+EXPORT void *init_bitstream(const char*in, const char *out)
+{
+	// structure with ffmpeg variables
+	struct liveStream *ctx = NULL;
+	struct inputCfg cfg = { .type =  IN_STREAM, .need_decoder = 0};
+	//Used for error checking
+	int ret = 0;
+
+
+	// allocation of Live Stream structure
+	ctx = malloc(sizeof(struct liveStream));
+	if(ctx == NULL)
+	{
+		fprintf(stderr,"Error in web play struct alloc\n");
+		return NULL;
+	}
+	memset(ctx, 0, sizeof(*ctx));
+	ret = configure_input(ctx, in, &cfg);
+	if (ret < 0)
+	{
+		ret = -1;
+		fprintf(stderr, "Error while configuring Input %s\n",in);
+	}
+
+	init_ffmpeg();
+end:
+	if(ret < 0)
+	{
+		stop_bitstream((void*)ctx);
+		return NULL;
+	}
+	return ctx;
+
+
+}
+
 EXPORT void stop_capture(void *actx)
 {
 	struct liveStream *ctx = (struct liveStream *)actx;
@@ -254,6 +298,8 @@ EXPORT void *init_capture(const char*path)
 	// structure with ffmpeg variables
 	struct liveStream *ctx = NULL;
 	AVStream *stream = NULL;
+	struct inputCfg cfg = { .type =  IN_WEBCAM, .need_decoder = 1};
+
 	// allocation of Live Stream structure
 	ctx = malloc(sizeof(struct liveStream));
 	if(ctx == NULL)
@@ -278,7 +324,7 @@ EXPORT void *init_capture(const char*path)
 			break;
 		}
 
-		ret = configure_input(ctx, fname, IN_WEBCAM);
+		ret = configure_input(ctx, fname, &cfg);
 		if (ret < 0)
 		{
 			ret = -1;
@@ -528,17 +574,23 @@ EXPORT int start_capture(void *actx)
 end:
 	return ret;
 }
+EXPORT int start_bitstream(void *actx)
+{
+	int ret = 0;
+	return ret;
+}
 /**
  * only one image can be set to be overlayed
  */
 EXPORT int set_image(void *actx,const char*path, int xpos,int ypos,int height, int width)
 {
 	int ret = 0;
+	struct inputCfg cfg = { .type =  IN_IMAGE, .need_decoder = 1};
 	struct liveStream *ctx = (struct liveStream *)actx;
 	if(!ctx)
 		return -1;
 
-	ret = configure_input(ctx,path,IN_IMAGE);
+	ret = configure_input(ctx, path, &cfg);
 	if(ret < 0)
 	{
 		av_log(NULL,AV_LOG_ERROR,"unable to configure input\n");

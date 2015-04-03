@@ -1,21 +1,22 @@
 
 CXXFLAGS=-g -I../library/
-LDFLAGS= -pthread
+LDLIBS += -pthread
 SRC= test.cpp
 
 #OBJS=$(addsuffix .o,$(EXAMPLES))
 
-EXAMPLES= test multi_thread_test
+EXAMPLES= test multi_thread_test h264bitstream
 SYS := $(shell $(CXX) -dumpmachine)
 
 ifneq (, $(findstring linux, $(SYS)))
-LIBRARY=../library/libstream.so
+LDFLAGS=-L../library
+LIBRARY=-lstream
 endif
 
 ifneq (, $(findstring mingw, $(SYS)))
 LIBRARY=../library/libstream.dll
 endif
-LDFLAGS += $(LIBRARY)
+LDLIBS += $(LIBRARY)
 all:$(EXAMPLES)
 
 clean:

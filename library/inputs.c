@@ -38,7 +38,7 @@ static void *input_thread(void *arg)
 	}
 	return NULL;
 }
-int configure_input(struct liveStream *ctx,const char *name,enum InputType type)
+int configure_input(struct liveStream *ctx, const char *name, struct inputCfg *cfg)
 {
 	int ret = 0;
 	int i = 0;
@@ -51,17 +51,23 @@ int configure_input(struct liveStream *ctx,const char *name,enum InputType type)
 	AVCodecContext *dec_ctx;
 	AVStream *st;
 
-	if(IN_WEBCAM == type )
+	if(IN_WEBCAM == cfg->type )
 	{
 		fmt = CAM_DRIVER;
 	}
+	else if ( IN_STREAM == cfg->type)
+	{
+		fmt = NULL;
+	}
+
+
 	ret = init_decoder(&ic,name,fmt);
 	if(ret < 0)
 	{
 		return -1;
 	}
 
-	ret = av_find_best_stream(ic,AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0);
+	ret = av_find_best_stream(ic, AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0);
 	st = ic->streams[ret];
 	dec_ctx = st->codec;
 
@@ -80,6 +86,7 @@ int configure_input(struct liveStream *ctx,const char *name,enum InputType type)
 		ctx->inputs = input;
 	else
 		prev_input->next = input;
+
 	input->next = NULL;
 	input->id = ctx->nb_input;
 	ctx->nb_input++;
