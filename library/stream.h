@@ -36,6 +36,8 @@ struct lsInput
 	AVRational fr;
 	/** Time base */
 	AVFormatContext	*ic;
+	/* pb used when decoder is not required */
+	AVIOContext *pb;
 	AVCodecContext *dec_ctx;
 	AVStream *st;
 	AVFilterContext *in_filter;
@@ -43,6 +45,13 @@ struct lsInput
 	AVThreadMessageQueue *in_thread_queue;
 	AVFrame *InFrame;
 	int eof_reached;
+
+	/* Used in case of encoded input video */
+	unsigned char *in_buffer;
+	unsigned int in_buf_size;
+	unsigned int need_decoder;
+	AVIOInterruptCB cb;
+
 	struct lsInput *next;
 };
 struct liveStream
@@ -63,6 +72,7 @@ struct liveStream
 	long long dts;
 	long long sync_out_pts;
 	sem_t filter_lock;
+	int have_filter;
 	struct timespec lock_time;
 };
 

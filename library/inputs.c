@@ -2,14 +2,44 @@
 #include "decoder.h"
 #include "inputs.h"
 #include "pthread.h"
+#include "libavutil/intreadwrite.h"
+
+int read_frame(struct lsInput *input,  AVPacket *pkt)
+{
+	int ret = 0;
+	int16_t size = 0;
+	if(input->ic)
+	{
+		ret = av_read_frame(input->ic, pkt);
+		
+	}
+	else if(input->pb)
+	{
+
+		ret = avio_read(input->pb,(unsigned char*)&size, 2);
+		size = AV_RB16(&size);
+		if(size > input->in_buf_size)
+		{
+			input->in_buf_size *= 2;
+        		input->in_buffer = av_malloc(input->in_buf_size);
+		}
+
+		pkt->stream_index  = 0; 
+        	pkt->size = size;
+		pkt->data = input->in_buffer;
+		ret = avio_read(input->pb,pkt->data, size);
+	}
+	return ret;
+}
 static void *input_thread(void *arg)
 {
 	struct lsInput *input = arg;
 	int ret = 0;
 	while(1)
 	{
-		AVPacket pkt;
-		ret = av_read_frame(input->ic, &pkt);
+		AVPacket pkt = {0};
+		av_init_packet(&pkt);
+		ret = read_frame(input, &pkt);
 		if (ret == AVERROR(EAGAIN))
 		{
 			av_usleep(10000);
@@ -31,6 +61,8 @@ static void *input_thread(void *arg)
 					av_err2str(ret));
 
 			}
+			av_log(NULL, AV_LOG_WARNING, "EOF %x\n",AVERROR_EOF);
+			
 			av_free_packet(&pkt);
 			av_thread_message_queue_set_err_recv(input->in_thread_queue, ret);
 			break;
@@ -38,19 +70,20 @@ static void *input_thread(void *arg)
 	}
 	return NULL;
 }
+
 int configure_input(struct liveStream *ctx, const char *name, struct inputCfg *cfg)
 {
 	int ret = 0;
 	int i = 0;
 	char *fmt = NULL;
-	AVFormatContext *ic;
+	AVFormatContext *ic = NULL;
 
 	/** Input index */
 	struct lsInput *input;
 	struct lsInput *prev_input;
-	AVCodecContext *dec_ctx;
+	AVCodecContext *dec_ctx = NULL;
 	AVStream *st;
-
+#define CHECK_END if (ret < 0)goto end
 	if(IN_WEBCAM == cfg->type )
 	{
 		fmt = CAM_DRIVER;
@@ -61,29 +94,12 @@ int configure_input(struct liveStream *ctx, const char *name, struct inputCfg *c
 	}
 
 
-	if ( 1 == cfg->need_decoder)
-	{
-		ret = init_decoder(&ic,name,fmt);
-	}
-	else
-	{
-		ret = init_wo_decoder(&ic, name, fmt);
-	}
-	if(ret < 0)
-	{
-		return -1;
-	}
-
-	ret = av_find_best_stream(ic, AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0);
-	st = ic->streams[ret];
-	dec_ctx = st->codec;
-
 	for(i = 0,input = ctx->inputs;i < ctx->nb_input;i++)
 	{
 		prev_input = input;
 		input = input->next;
 	}
-	input= malloc(sizeof(*ctx->inputs));
+	input = av_mallocz(sizeof(*ctx->inputs));
 	if (!input)
 	{
 		dinit_decoder(&ic,dec_ctx);
@@ -94,6 +110,27 @@ int configure_input(struct liveStream *ctx, const char *name, struct inputCfg *c
 	else
 		prev_input->next = input;
 
+	if ( 1 == cfg->need_decoder)
+	{
+		ret = init_decoder(&ic,name,fmt);
+		CHECK_END;
+		ret = av_find_best_stream(ic, AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0);
+		st = ic->streams[ret];
+		dec_ctx = st->codec;
+		input->InFrame  = av_frame_alloc();
+		input->need_decoder = 1;
+	}
+	else
+	{
+		input->in_buf_size = 1024 * 1024;
+		input->in_buffer = av_malloc(input->in_buf_size);
+		input->need_decoder = 0;
+		/* XXX need to free somewhere */
+		ret = avio_open2(&input->pb, name, AVIO_FLAG_READ ,&input->cb, NULL);
+		CHECK_END;
+	}
+
+
 	input->next = NULL;
 	input->id = ctx->nb_input;
 	ctx->nb_input++;
@@ -101,7 +138,6 @@ int configure_input(struct liveStream *ctx, const char *name, struct inputCfg *c
 	input->dec_ctx = dec_ctx;
 	input->st = st;
 	input->eof_reached = 0;
-	input->InFrame  = av_frame_alloc();
 	ret = av_thread_message_queue_alloc(&input->in_thread_queue,8, sizeof(AVPacket));
 	if(ret < 0)
 	{
@@ -120,7 +156,9 @@ int configure_input(struct liveStream *ctx, const char *name, struct inputCfg *c
 			prev_input->next = NULL;
 		return -1;
 	}
-	return 0;
+
+end:
+	return ret;
 }
 
 void dinit_inputs(struct lsInput **input,int *nb)
@@ -140,8 +178,16 @@ void dinit_inputs(struct lsInput **input,int *nb)
 			pthread_join(in->thread, NULL);
 			av_thread_message_queue_free(&in->in_thread_queue);
 		}
-		dinit_decoder(&in->ic,in->dec_ctx);
-		av_frame_free(&in->InFrame);
+		if (in->need_decoder)
+		{
+			dinit_decoder(&in->ic,in->dec_ctx);
+			av_frame_free(&in->InFrame);
+		}
+		else
+		{
+			av_free(in->in_buffer);
+			avio_close(in->pb);
+		}
 		sin = in->next;
 		free(in);
 		in = NULL;

@@ -112,6 +112,93 @@ static void dinit_encoder(AVFormatContext **oc)
 	*oc = NULL;
 }
 
+static void dinit_muxer(AVFormatContext **oc)
+{
+        AVFormatContext *loc = *oc;
+        AVOutputFormat *fmt;
+        AVStream *st;
+	unsigned int i;
+        fmt = loc->oformat;
+
+        /* Close each codec. */
+        for (i = 0; i < loc->nb_streams; i++)
+        {
+                st = loc->streams[i];
+                avcodec_close(st->codec);
+        }
+        if (!(fmt->flags & AVFMT_NOFILE))
+        {
+                /* Close the output file. */
+                avio_close(loc->pb);
+        }
+        /** loc is freed inside free_context */
+        avformat_free_context(loc);
+	*oc = NULL;
+
+}
+static int init_muxer(struct liveStream *ctx, const char* oname)
+{
+	int ret = 0;
+	AVFormatContext *loc;
+	AVCodec *video_codec = NULL;
+	AVOutputFormat *fmt;
+	AVStream *vst = NULL;
+	char arr_string[128] = "";
+
+	/* allocate the output media context */
+	if( strstr(oname,"rtsp") )
+		avformat_alloc_output_context2(&ctx->oc, NULL, "rtsp", oname);
+	else if(strstr(oname,"rtmp"))
+		avformat_alloc_output_context2(&ctx->oc, NULL, "rtmp", oname);
+	else
+		avformat_alloc_output_context2(&ctx->oc, NULL, NULL, oname);
+		
+	if (!ctx->oc)
+	{
+		av_log(NULL, AV_LOG_ERROR, "Could not deduce output format\n");
+		ret = -1;
+		goto end;
+	}
+	//save output context in local context
+	loc = ctx->oc;
+	fmt = loc->oformat;
+
+	vst = add_webcam_stream(ctx, &video_codec, AV_CODEC_ID_H264);
+	if (!vst)
+	{
+		ret = -1;
+		goto end;
+	}
+
+	/* open the output file, if needed */
+	if (!(fmt->flags & AVFMT_NOFILE))
+	{
+		ret = avio_open(&loc->pb, oname, AVIO_FLAG_WRITE);
+		if (ret < 0)
+		{
+			av_log(NULL, AV_LOG_ERROR, "Could not open '%s': %s\n", oname,
+					av_make_error_string(arr_string, 128, ret));
+			ret = -1;
+			goto end;
+		}
+	}
+	av_dump_format(loc, 0, "Output", 1);
+	/* Write the stream header, if any. */
+	ret = avformat_write_header(loc, NULL);
+	if (ret < 0)
+	{
+		av_log(NULL, AV_LOG_ERROR, "Error occurred when writing header: %s\n",
+				av_make_error_string(arr_string, 128, ret));
+		ret = -1;
+		goto end;
+	}
+
+end:
+        if(ret < 0)  
+		dinit_muxer(&ctx->oc);
+	return ret;
+}
+
 static int init_encoder(struct liveStream *ctx, const char* oname)
 {
 	int ret = 0;
@@ -234,6 +321,12 @@ EXPORT void stop_bitstream(void *actx)
 	struct liveStream *ctx = (struct liveStream *)actx;
 	if (ctx)
 	{
+		dinit_inputs(&ctx->inputs,&ctx->nb_input);
+		if(ctx->oc)
+		{
+			av_write_trailer(ctx->oc);
+			dinit_muxer(&ctx->oc);
+		}
 		free(ctx);
 	}
 }
@@ -254,6 +347,9 @@ EXPORT void *init_bitstream(const char*in, const char *out)
 		return NULL;
 	}
 	memset(ctx, 0, sizeof(*ctx));
+
+	init_ffmpeg();
+
 	ret = configure_input(ctx, in, &cfg);
 	if (ret < 0)
 	{
@@ -261,7 +357,19 @@ EXPORT void *init_bitstream(const char*in, const char *out)
 		fprintf(stderr, "Error while configuring Input %s\n",in);
 	}
 
-	init_ffmpeg();
+	ctx->have_filter = 0;
+
+	ctx->video_avg_frame_rate.num = 30;
+	ctx->video_avg_frame_rate.den = 1;
+
+	ret = init_muxer(ctx, out);
+	if(ret < 0)
+	{
+		printf("Error in muxer init for %s\n", out);
+		ret =-1;
+		goto end;
+	}
+
 end:
 	if(ret < 0)
 	{
@@ -356,6 +464,7 @@ EXPORT void *init_capture(const char*path)
 		ctx->video_avg_frame_rate.den = 1;
 
 	}
+	ctx->have_filter = 1;
 
 	ret = init_filters(ctx);
 	if(ret < 0)
@@ -401,13 +510,21 @@ static int output_packet(struct lsInput *input,const AVPacket *pkt)
 	{
 		avpkt = *pkt;
 	}
-	ret = avcodec_decode_video2(input->dec_ctx,input->InFrame, &got_output,&avpkt);
-	if (!got_output || ret < 0)
+
+	if (input->dec_ctx)
 	{
-		av_buffersrc_add_ref(input->in_filter, NULL, 0);
+		ret = avcodec_decode_video2(input->dec_ctx,input->InFrame, &got_output,&avpkt);
+		if (!got_output || ret < 0)
+		{
+			av_buffersrc_add_ref(input->in_filter, NULL, 0);
+		}
+		if(ret < 0)
+			av_log(NULL,AV_LOG_ERROR,"unable to decode video\n");
 	}
-	if(ret < 0)
-		av_log(NULL,AV_LOG_ERROR,"unable to decode video\n");
+	else
+	{
+		/* Write to Muxer */
+	}
 
 	return ret;
 }
@@ -467,25 +584,38 @@ struct lsInput* get_best_input(struct liveStream *ctx)
 	int nb_requests_max = 0;
 	int ret = 0;
 
-	take_filter_lock(&ctx->filter_lock);
-	ret = avfilter_graph_request_oldest(ctx->filter_graph);
-	give_filter_lock(&ctx->filter_lock);
-	if(ret >= 0)
+	if ( ctx->have_filter )
 	{
-		reap_filter(ctx);
-	}
-
-	for(input = ctx->inputs;input;input = input->next)
-	{
-		if(input->eof_reached)
-			continue;
 		take_filter_lock(&ctx->filter_lock);
-		nb_requests = av_buffersrc_get_nb_failed_requests(input->in_filter);
+		ret = avfilter_graph_request_oldest(ctx->filter_graph);
 		give_filter_lock(&ctx->filter_lock);
-		if (nb_requests >  nb_requests_max)
+		if(ret >= 0)
 		{
-			nb_requests_max = nb_requests;
-			best_input = input;
+			reap_filter(ctx);
+		}
+
+		for(input = ctx->inputs;input;input = input->next)
+		{
+			if(input->eof_reached)
+				continue;
+			take_filter_lock(&ctx->filter_lock);
+			nb_requests = av_buffersrc_get_nb_failed_requests(input->in_filter);
+			give_filter_lock(&ctx->filter_lock);
+			if (nb_requests >  nb_requests_max)
+			{
+				nb_requests_max = nb_requests;
+				best_input = input;
+			}
+		}
+	}
+	else
+	{
+		for(input = ctx->inputs;input;input = input->next)
+		{
+			if(input->eof_reached)
+				continue;
+			/* XXX select from PTS or DTS */
+			best_input = ctx->inputs;
 		}
 	}
 
@@ -577,6 +707,37 @@ end:
 EXPORT int start_bitstream(void *actx)
 {
 	int ret = 0;
+	struct lsInput* input = NULL;
+	struct liveStream *ctx = (struct liveStream *)actx;
+	AVPacket packet;
+
+	while(1)
+	{
+		input = get_best_input(ctx);
+		if(!input)
+		{
+			ret = 0;
+			break;
+		}
+
+		ret = get_input_packet(input,&packet);
+		if (ret == AVERROR(EAGAIN))
+		{
+			continue;
+		}
+		else if (ret == AVERROR_EOF)
+		{
+			output_packet(input,NULL);
+			input->eof_reached = 1;
+			continue;
+		}
+		if(ret < 0)
+		{
+			av_log(NULL,AV_LOG_ERROR,"No Input packet %x\n",ret);
+			break;
+		}
+		ret = av_interleaved_write_frame(ctx->oc, &packet);
+	}
 	return ret;
 }
 /**
@@ -658,6 +819,7 @@ EXPORT int pause_stream(void *actx, long long duration)
 	struct liveStream *ctx = (struct liveStream *)actx;
 	if(!ctx)
 		return -1;
+
 	av_bprintf(&ctx->graph_desc, ";color=black:duration=%lld:s=%dx%d[onit];[bg][onit]overlay=eof_action=pass",duration, STREAM_WIDTH, STREAM_HEIGHT);
 
 	ret = configure_filter(ctx);

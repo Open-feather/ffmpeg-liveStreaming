@@ -81,7 +81,7 @@ int take_filter_lock(sem_t *sem)
 		av_log(NULL,AV_LOG_ERROR,"clock_gettime failed\n");
 	}
 	/* lock time set to 5 second */
-	ts.tv_sec += 5;
+	ts.tv_sec += 10;
 
 	while ((ret = sem_timedwait(sem, &ts)) == -1)
 	{
@@ -153,6 +153,7 @@ int init_filters(struct liveStream *ctx)
 	{
 		av_log(NULL,AV_LOG_ERROR,"Unable to init filter locks\n");
 	}
+
 	av_bprint_init(&ctx->graph_desc, 0, 1);
 	av_bprintf(&ctx->graph_desc, "[0]format=yuv420p,scale=%d:%d[bg]",STREAM_WIDTH,STREAM_HEIGHT);
 
