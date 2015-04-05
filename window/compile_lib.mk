@@ -2,14 +2,20 @@ SRC= ..\library\stream.c ..\library\decoder.c ..\library\filter.c ..\library\inp
 FFMPEG_LIB= avcodec.lib avformat.lib avdevice.lib avfilter.lib avutil.lib swresample.lib postproc.lib swscale.lib
 DSHOW_LIB= ole32.lib psapi.lib strmiids.lib uuid.lib
 PTHREAD_LIB=libpthreadGC2.a
+
 FFMPEG_VERSION_32=ffmpeg-20140822-git-1b5ec6a-win32-dev
 FFMPEG_VERSION_64=ffmpeg-20150204-git-77f326d-win64-dev
+
 INCLUDE_64= /I3rdparty\$(FFMPEG_VERSION_64)\include /I3rdparty\Pre-built.2\include
 INCLUDE_32= /I3rdparty\$(FFMPEG_VERSION_32)\include /I3rdparty\Pre-built.2\include
 INCLUDE= /I..\library  /I.
-INCLUDE= $(INCLUDE) /I"C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\include" 
+VS_VER=10
+VS_SDK=v7.0A
+INCLUDE= $(INCLUDE) /I"C:\Program Files (x86)\Microsoft Visual Studio $(VS_VER).0\VC\include"
+INCLUDE= $(INCLUDE) /I"3rdparty\VS$(VS_VER)"
 #Adding Windows include
-INCLUDE= $(INCLUDE) /I"C:\Program Files (x86)\Microsoft SDKs\Windows\v7.1A\Include"
+INCLUDE= $(INCLUDE) /I"C:\Program Files (x86)\Microsoft SDKs\Windows\$(VS_SDK)\Include"
+
 OUTPUT_32=libstream_32.dll
 OUTPUT_64=libstream_64.dll
 
@@ -19,7 +25,8 @@ LIB_DIR_64=$(LIB_DIR_64) /LIBPATH:3rdparty\Pre-built.2\lib\x64
 LIB_DIR_32=/LIBPATH:3rdparty\$(FFMPEG_VERSION_32)\lib
 LIB_DIR_32=$(LIB_DIR_32) /LIBPATH:3rdparty\Pre-built.2\lib\x86
 
-all: libstream_32 libstream_64
+#all: libstream_32 libstream_64
+all: libstream_64
 	
 libstream_64:
 	$(CC) $(INCLUDE_64) $(INCLUDE) $(SRC) /link /DLL /OUT:$(OUTPUT_64) $(LIB_DIR_64) $(FFMPEG_LIB) $(DSHOW_LIB) $(PTHREAD_LIB)

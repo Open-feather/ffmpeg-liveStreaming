@@ -334,7 +334,7 @@ EXPORT void *init_bitstream(const char*in, const char *out)
 {
 	// structure with ffmpeg variables
 	struct liveStream *ctx = NULL;
-	struct inputCfg cfg = { .type =  IN_STREAM, .need_decoder = 0};
+	struct inputCfg cfg = { IN_STREAM, 0};
 	//Used for error checking
 	int ret = 0;
 
@@ -406,7 +406,8 @@ EXPORT void *init_capture(const char*path)
 	// structure with ffmpeg variables
 	struct liveStream *ctx = NULL;
 	AVStream *stream = NULL;
-	struct inputCfg cfg = { .type =  IN_WEBCAM, .need_decoder = 1};
+	struct inputCfg cfg = { IN_WEBCAM, 1};
+	char *fname = NULL;
 
 	// allocation of Live Stream structure
 	ctx = malloc(sizeof(struct liveStream));
@@ -419,7 +420,7 @@ EXPORT void *init_capture(const char*path)
 
 	init_ffmpeg();
 
-	char *fname = malloc(MAX_LEN);
+	fname = malloc(MAX_LEN);
 	for(i = 0;ret >= 0;i++)
 	{
 
@@ -630,6 +631,7 @@ EXPORT int start_capture(void *actx)
 	AVFormatContext *ic;
 	long long start_time;
 	struct lsInput* input = NULL;
+	AVRational av_time_base_q = {1, AV_TIME_BASE};
 
 	if(!ctx)
 	{
@@ -670,10 +672,12 @@ EXPORT int start_capture(void *actx)
 		if(input->id != 1)
 		{
 			if (packet.pts != AV_NOPTS_VALUE)
-				packet.pts -= av_rescale_q(start_time, AV_TIME_BASE_Q, ic->streams[0]->time_base);
+			{
+				packet.pts -= av_rescale_q(start_time, av_time_base_q, ic->streams[0]->time_base);
+			}
 
 			if (packet.dts != AV_NOPTS_VALUE)
-				packet.dts -= av_rescale_q(start_time, AV_TIME_BASE_Q, ic->streams[0]->time_base);
+				packet.dts -= av_rescale_q(start_time, av_time_base_q, ic->streams[0]->time_base);
 		}
 
                 //packet.dts = av_rescale_q(stWebPlay->dts, AV_TIME_BASE_Q, ic->streams[0]->time_base);
@@ -746,7 +750,7 @@ EXPORT int start_bitstream(void *actx)
 EXPORT int set_image(void *actx,const char*path, int xpos,int ypos,int height, int width)
 {
 	int ret = 0;
-	struct inputCfg cfg = { .type =  IN_IMAGE, .need_decoder = 1};
+	struct inputCfg cfg = { IN_IMAGE, 1};
 	struct liveStream *ctx = (struct liveStream *)actx;
 	if(!ctx)
 		return -1;

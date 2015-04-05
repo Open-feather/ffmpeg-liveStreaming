@@ -27,7 +27,7 @@ namespace duplicate_stream
 			int ret = 0;
 			IntPtr cameraPtr;
 			DuplicateFormat enumFormat = DuplicateFormat.TOP_N_BOTTOM;
-			cameraPtr =	init_capture("rtmp://192.168.1.109/myapp/mystream");
+			cameraPtr =	init_capture("rtmp://192.168.1.114/myapp/mystream");
 			if(cameraPtr==IntPtr.Zero)
 			{
 				Console.WriteLine("Please verify your camera is on\n");

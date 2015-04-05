@@ -57,8 +57,8 @@ static void *input_thread(void *arg)
 			if (ret != AVERROR_EOF)
 			{
 				av_log(input->ic, AV_LOG_ERROR,
-					"Unable to send packet to main thread: %s\n",
-					av_err2str(ret));
+					"Unable to send packet to main thread: %d\n",
+					ret);
 
 			}
 			av_log(NULL, AV_LOG_WARNING, "EOF %x\n",AVERROR_EOF);
