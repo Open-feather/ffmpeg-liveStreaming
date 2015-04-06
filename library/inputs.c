@@ -7,6 +7,7 @@
 int read_frame(struct lsInput *input,  AVPacket *pkt)
 {
 	int ret = 0;
+	int index = 0;
 	int16_t size = 0;
 	if(input->ic)
 	{
@@ -25,9 +26,16 @@ int read_frame(struct lsInput *input,  AVPacket *pkt)
 		}
 
 		pkt->stream_index  = 0; 
-        	pkt->size = size;
+		pkt->size = size;
 		pkt->data = input->in_buffer;
-		ret = avio_read(input->pb,pkt->data, size);
+		while(size) {
+			ret = avio_read(input->pb, pkt->data + index, size);
+			if(ret <= 0){
+				break;
+			}
+			size -= ret;
+			index += ret;
+		}
 	}
 	return ret;
 }
@@ -61,7 +69,6 @@ static void *input_thread(void *arg)
 					ret);
 
 			}
-			av_log(NULL, AV_LOG_WARNING, "EOF %x\n",AVERROR_EOF);
 			
 			av_free_packet(&pkt);
 			av_thread_message_queue_set_err_recv(input->in_thread_queue, ret);

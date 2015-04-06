@@ -28,7 +28,7 @@
 #define CLOCK_REALTIME_ALARM 8
 #define CLOCK_BOOTTIME_ALARM 9
 
-#elif MINGW
+#elif defined (MINGW) || defined (__MINGW32__) || defined (_MSC_VER)
 #define EXPORT __declspec(dllexport)
 #else
 #define EXPORT
