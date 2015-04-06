@@ -5,7 +5,7 @@
 
 
 
-CFLAGS= -Wall  -std=gnu99
+CFLAGS= -Wall -std=gnu99
 FFMPEG_LIBS=libavfilter
 SRC=decoder.c stream.c filter.c inputs.c platform.c
 
@@ -49,7 +49,7 @@ LIBS+=`pkg-config --libs libavcodec`
 endif
 
 OBJ=$(SRC:.c=.o)
-debug: ECFLAGS = -Wall -ggdb3
+debug: CFLAGS += -Wall -ggdb3
 debug: $(LIB)
 all: $(LIB)
 

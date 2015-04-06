@@ -8,7 +8,7 @@ int read_frame(struct lsInput *input,  AVPacket *pkt)
 {
 	int ret = 0;
 	int index = 0;
-	int16_t size = 0;
+	uint16_t size = 0;
 	if(input->ic)
 	{
 		ret = av_read_frame(input->ic, pkt);
@@ -21,8 +21,21 @@ int read_frame(struct lsInput *input,  AVPacket *pkt)
 		size = AV_RB16(&size);
 		if(size > input->in_buf_size)
 		{
-			input->in_buf_size *= 2;
-        		input->in_buffer = av_malloc(input->in_buf_size);
+			unsigned char *buffer = input->in_buffer;
+			uint16_t lsize = input->in_buf_size * 2;
+        		input->in_buffer = av_malloc(lsize);
+			if(input->in_buffer)
+			{
+				input->in_buf_size = lsize;
+				av_free(buffer);
+			}
+			else
+			{
+				av_log(NULL, AV_LOG_ERROR,"Unable to allocate chunk > %d\n", size);
+				av_log(NULL, AV_LOG_ERROR,"Please verify Input stream have size header \n");
+				input->in_buffer = buffer;
+				size = input->in_buf_size;
+			}
 		}
 
 		pkt->stream_index  = 0; 
