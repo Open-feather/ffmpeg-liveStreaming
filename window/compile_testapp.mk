@@ -1,5 +1,5 @@
 SRC=..\test\test.cpp
-INCLUDE=/I..\library /I"C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\include" /I3rdparty\Pre-built.2\include
+INCLUDE=/I..\library /I"C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\include" /I3rdparty\Pre-built.2\include
 PTHREAD_LIB= libpthreadGC2.a
 
 TEST_PROGRAM=test.exe multi_thread_test.exe h264bitstream.exe
