@@ -27,12 +27,12 @@ h264bitstream.exe:h264bitstream.obj
 
 # following files for c-sharp program...
 stream_video.exe : stream_video.cs
-		csc stream_video.cs
+	csc stream_video.cs
 overly_image.exe : overly_image.cs
-		csc overly_image.cs
+	csc overly_image.cs
 duplicate_stream.exe : duplicate_stream.cs
-		csc duplicate_stream.cs
+	csc duplicate_stream.cs
 overly_stream.exe : overly_stream.cs
-		csc overly_stream.cs
+	csc overly_stream.cs
 clean:
-	del *.obj *.exe
+	@del *.obj $(TEST_PROGRAM) $(TEST_PROGRAM_SHARP) 2> nul

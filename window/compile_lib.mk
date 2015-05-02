@@ -30,20 +30,20 @@ DEPEND2_32=3rdParty\Pre-built.2\dll\x64\pthreadGC2.dll
 all: libstream_32 $(OUTPUT_64)
 
 $(OUTPUT_64):
-	$(CC) $(INCLUDE_64) $(INCLUDE) $(SRC) /link /DLL /OUT:$(OUTPUT_64) $(LIB_DIR_64) $(FFMPEG_LIB) $(DSHOW_LIB) $(PTHREAD_LIB)
+	@$(CC) /nologo $(INCLUDE_64) $(INCLUDE) $(SRC) /link /DLL /OUT:$(OUTPUT_64) $(LIB_DIR_64) $(FFMPEG_LIB) $(DSHOW_LIB) $(PTHREAD_LIB)
 
 $(OUTPUT_32):
-	$(CC) $(INCLUDE) $(INCLUDE_32) $(SRC) /link /DLL /OUT:$(OUTPUT_32) $(LIB_DIR_32) $(FFMPEG_LIB) $(DSHOW_LIB) $(PTHREAD_LIB)
+	@$(CC) /nologo $(INCLUDE) $(INCLUDE_32) $(SRC) /link /DLL /OUT:$(OUTPUT_32) $(LIB_DIR_32) $(FFMPEG_LIB) $(DSHOW_LIB) $(PTHREAD_LIB)
 
 dist_64:$(OUTPUT_64)
-	move $(OUTPUT_64) dist_x64 1> nul 2> nul
-	copy $(DEPEND_64) dist_x64 1> nul 2> nul
-	copy $(DEPEND2_64) dist_x64 1> nul 2> nul
+	@move $(OUTPUT_64) dist_x64 1> nul 2> nul
+	@copy $(DEPEND_64) dist_x64 1> nul 2> nul
+	@copy $(DEPEND2_64) dist_x64 1> nul 2> nul
 
 dist_32:$(OUTPUT_32)
-	move $(OUTPUT_32) dist_x86 1> nul 2> nul
-	copy $(DEPEND_32) dist_x86 1> nul 2> nul
-	copy $(DEPEND2_32) dist_x86 1> nul 2> nul
+	@move $(OUTPUT_32) dist_x86 1> nul 2> nul
+	@copy $(DEPEND_32) dist_x86 1> nul 2> nul
+	@copy $(DEPEND2_32) dist_x86 1> nul 2> nul
 
 clean:
 	@del *.obj *.exp *.lib *.dll 1> nul 2> nul
