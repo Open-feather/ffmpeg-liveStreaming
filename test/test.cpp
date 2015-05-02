@@ -9,7 +9,7 @@ int main(int argc, char*argv[])
 	int width = 200;
 	int ret = 0;
 
-	void *ctx = init_capture("rtmp://localhost/myapp/mystream");
+	void *ctx = initWebCapture("rtmp://localhost/myapp/mystream");
 	if(!ctx)
 	{
 		cout<<"Please verify your camera is On"<<endl;

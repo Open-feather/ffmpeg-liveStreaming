@@ -18,7 +18,7 @@ int main(int argc, char*argv[])
 	int ret = 0;
 	pthread_t tid;
 
-	void *ctx = init_capture("out.m3u8");
+	void *ctx = initWebCapture("out.m3u8");
 	if(!ctx)
 	{
 		cout<<"Please verify your camera is On"<<endl;

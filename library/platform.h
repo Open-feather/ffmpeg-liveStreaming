@@ -33,7 +33,7 @@
 #else
 #define EXPORT
 #define CAM_DRIVER "v4l2"
-#define LINUX_CAM_DEVICE_NAME "/dev/video0"
+#define LINUX_CAM_DEVICE_NAME "/dev/video"
 #endif
 
 void get_devicename(char *str,int index);

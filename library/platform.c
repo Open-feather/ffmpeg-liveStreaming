@@ -7,19 +7,27 @@
 #include <winnt.h>
 #include <winbase.h>
 #include <dshow.h>
+#else
+#include <stdlib.h>
+#include <stdio.h>
+#include <dirent.h>
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #endif
 #include <pthread.h>
 #include <string.h>
 void get_devicename(char *str,int index)
 {
 
+	char *name = malloc(MAX_LEN);
+	int i = 0;
 #if defined (__MINGW32__) || defined (_MSC_VER)
 	int ret;
-	char *name = malloc(MAX_LEN);
 	ICreateDevEnum *devenum = NULL;
 	IEnumMoniker *classenum = NULL;
 	IMoniker *m = NULL;
-	int i = 0;
 	*name = '\0';
 
 	/** Initialize COM  */
@@ -62,7 +70,6 @@ void get_devicename(char *str,int index)
 		WideCharToMultiByte(CP_UTF8, 0, var.bstrVal, -1, name, MAX_LEN, 0, 0);
 		snprintf(str,MAX_LEN,"video=%s",name);
 fail:
-		free(name);
 
 		if (bag)
 			IPropertyBag_Release(bag);
@@ -78,8 +85,24 @@ end:
 	CoUninitialize();
 
 #else
-	strcpy(str, LINUX_CAM_DEVICE_NAME);
+	DIR *mydir;
+	struct dirent *myfile;
+	struct stat mystat;
+
+	mydir = opendir("/dev/");
+	for(i = 0;i <= index && (myfile = readdir(mydir)) != NULL;)
+	{
+		stat(myfile->d_name, &mystat);
+		if(!strncmp(myfile->d_name,"video",5))
+			i++;
+	}
+
+	if(i)
+		sprintf(str, "/dev/%s", myfile->d_name);
+
+	closedir(mydir);
 #endif
+	free(name);
 	return;
 }
 #ifdef _MSC_VER

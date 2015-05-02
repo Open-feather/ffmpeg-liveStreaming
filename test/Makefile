@@ -9,7 +9,7 @@ SRC= test.cpp
 
 #OBJS=$(addsuffix .o,$(EXAMPLES))
 
-EXAMPLES= test multi_thread_test h264bitstream
+EXAMPLES= test multi_thread_test h264bitstream rtmp_save
 SYS := $(shell $(CXX) -dumpmachine)
 
 ifneq (, $(findstring linux, $(SYS)))
