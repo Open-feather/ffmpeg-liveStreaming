@@ -8,8 +8,15 @@ int main(int argc, char*argv[])
 	int height = 200;
 	int width = 200;
 	int ret = 0;
+	void *ctx = NULL;
 
-	void *ctx = initRtmpCapture("rtmp://localhost/myapp/mystream", "save.flv");
+	if(argc < 2)
+	{
+		cout<<"Usage "<<argv[0]<<" rtmp://ipaddress/App"<<endl;
+		return -1;
+	}
+
+	ctx = initRtmpCapture(argv[1], "save.flv");
 	if(!ctx)
 	{
 		cout<<"Please verify your camera is On"<<endl;

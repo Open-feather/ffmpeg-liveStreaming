@@ -27,7 +27,7 @@ namespace helloworld
 			int width = 200;
 			int ret = 0;
 			IntPtr cameraPtr;
-			cameraPtr=init_capture("rtmp://192.168.1.114/myapp/mystream");
+			cameraPtr=init_capture("rtmp://192.168.1.100/mytv");
 			if(cameraPtr==IntPtr.Zero)
 			{
 				Console.WriteLine("Please verify your camera is on\n");

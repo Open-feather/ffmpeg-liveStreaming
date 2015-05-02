@@ -6,7 +6,7 @@ SET VCVAR_SHELL="C:\PROGRA~2\Microsoft Visual Studio 12.0\VC\vcvarsall.bat"
 @echo Compiling 64 bit test Application
 call %VCVAR_SHELL% amd64
 mkdir dist_x64 > nul 2> nul
-nmake -f compile_testapp.mk all
+nmake /nologo -f compile_testapp.mk all
 
 REM @echo Compiling 32 bit library
 REM call %VCVAR_SHELL% x86

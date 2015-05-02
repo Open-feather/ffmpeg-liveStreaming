@@ -11,7 +11,7 @@ namespace steam_video
     class Program
     {
 		[DllImport("libstream_64")]
-		public static extern IntPtr init_capture([MarshalAs(UnmanagedType.LPStr)]string m);
+		public static extern IntPtr initWebCapture([MarshalAs(UnmanagedType.LPStr)]string m);
 		[DllImport("libstream_64")]
 		public static extern int pause_stream(IntPtr pausePtr, long duration);
 		[DllImport("libstream_64")]
@@ -22,7 +22,7 @@ namespace steam_video
         {
 			int ret = 0;
 			IntPtr cameraPtr;
-			cameraPtr =init_capture("rtmp://192.168.1.114/myapp/mystream");
+			cameraPtr =initWebCapture("rtmp://192.168.1.100/mytv");
 			if(cameraPtr==IntPtr.Zero)
 			{
 				Console.WriteLine("Please verify your camera is on\n");
