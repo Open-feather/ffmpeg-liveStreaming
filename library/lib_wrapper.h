@@ -7,7 +7,7 @@ extern "C" {
 #endif
 
 int start_capture(void *ctx);
-void *init_capture(const char*path);
+void *init_capture(const char *in, const char *out, struct inputCfg *cfg);
 void stop_capture(void *ctx);
 
 int set_image(void *actx,const char*path, int xpos, int ypos, int height, int width);
@@ -18,6 +18,9 @@ int pause_stream(void *actx, long long duration);
 void *init_bitstream(const char*in, const char *out);
 int start_bitstream(void *actx);
 void stop_bitstream(void *actx);
+
+void *initRtmpCapture(const char *inPath, const char *outPath);
+void *initWebCapture(const char *outPath);
 #ifdef __cplusplus
 }
 #endif

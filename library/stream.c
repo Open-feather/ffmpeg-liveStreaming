@@ -315,6 +315,22 @@ static int write_video_frame(AVFormatContext *oc, AVStream *st, AVFrame *frame)
 	}
 	return 0;
 }
+EXPORT void stop_capture(void *actx)
+{
+	struct liveStream *ctx = (struct liveStream *)actx;
+	if (ctx)
+	{
+		dinit_filters(ctx);
+		dinit_inputs(&ctx->inputs,&ctx->nb_input);
+		if(ctx->oc)
+		{
+			av_write_trailer(ctx->oc);
+			dinit_encoder(&ctx->oc);
+		}
+		av_frame_free(&ctx->OutFrame);
+		free(ctx);
+	}
+}
 
 EXPORT void stop_bitstream(void *actx)
 {
@@ -330,6 +346,80 @@ EXPORT void stop_bitstream(void *actx)
 		free(ctx);
 	}
 }
+
+EXPORT void *init_capture(const char *in, const char *out, struct inputCfg *cfg)
+{
+
+	int ret = 0;
+	// structure with ffmpeg variables
+	struct liveStream *ctx = NULL;
+	AVStream *stream = NULL;
+
+	// allocation of Live Stream structure
+	ctx = malloc(sizeof(struct liveStream));
+	if(ctx == NULL)
+	{
+		fprintf(stderr,"Error in liveStream struct alloc\n");
+		return NULL;
+	}
+	memset(ctx, 0, sizeof(*ctx));
+
+	init_ffmpeg();
+
+	ret = configure_input(ctx, in, cfg);
+	if(ret < 0)
+	{
+		av_log(NULL,AV_LOG_ERROR,"unable to configure input\n");
+		free(ctx);
+		return  NULL;
+	}
+
+	stream = ctx->inputs[0].st;
+	/** Initalize framerate coming from webcam */
+	if(stream->avg_frame_rate.num && stream->avg_frame_rate.den)
+	{
+		ctx->video_avg_frame_rate.num = stream->avg_frame_rate.num;
+		ctx->video_avg_frame_rate.den = stream->avg_frame_rate.den;
+	}
+	else if(stream->r_frame_rate.num && stream->r_frame_rate.den )
+	{
+		ctx->video_avg_frame_rate.num = stream->r_frame_rate.num;
+		ctx->video_avg_frame_rate.den = stream->r_frame_rate.den;
+	}
+	else
+	{
+		fprintf(stderr, "Unable to take out fps from webcam assuming 30fps\n");
+		ctx->video_avg_frame_rate.num = 30;
+		ctx->video_avg_frame_rate.den = 1;
+
+	}
+	ctx->have_filter = 1;
+
+	ret = init_filters(ctx);
+	if(ret < 0)
+	{
+		fprintf(stderr,"unable to initialize filter\n");
+		goto end;
+	}
+
+	ret = init_encoder(ctx, out);
+	if(ret < 0)
+	{
+		printf("Error in encoder init for %s\n", out);
+		ret =-1;
+		goto end;
+	}
+
+	ctx->OutFrame = av_frame_alloc();
+end:
+	if(ret < 0)
+	{
+		stop_capture((void*)ctx);
+		return NULL;
+	}
+	return ctx;
+}
+
 EXPORT void *init_bitstream(const char*in, const char *out)
 {
 	// structure with ffmpeg variables
@@ -380,48 +470,21 @@ end:
 
 
 }
-
-EXPORT void stop_capture(void *actx)
+EXPORT void *initRtmpCapture(const char *inPath, const char *outPath)
 {
-	struct liveStream *ctx = (struct liveStream *)actx;
-	if (ctx)
-	{
-		dinit_filters(ctx);
-		dinit_inputs(&ctx->inputs,&ctx->nb_input);
-		if(ctx->oc)
-		{
-			av_write_trailer(ctx->oc);
-			dinit_encoder(&ctx->oc);
-		}
-		av_frame_free(&ctx->OutFrame);
-		free(ctx);
-	}
+	struct inputCfg cfg = { IN_STREAM, 1}; //dont know 1 or 0
+
+	return init_capture(inPath, outPath, &cfg);
 }
 
-EXPORT void *init_capture(const char*path)
+EXPORT void *initWebCapture(const char *outPath)
 {
-
-	int ret = 0;
-	int i = 0;
-	// structure with ffmpeg variables
-	struct liveStream *ctx = NULL;
-	AVStream *stream = NULL;
 	struct inputCfg cfg = { IN_WEBCAM, 1};
 	char *fname = NULL;
-
-	// allocation of Live Stream structure
-	ctx = malloc(sizeof(struct liveStream));
-	if(ctx == NULL)
-	{
-		fprintf(stderr,"Error in web play struct alloc\n");
-		return NULL;
-	}
-	memset(ctx, 0, sizeof(*ctx));
-
-	init_ffmpeg();
-
+	int i = 0;
 	fname = malloc(MAX_LEN);
-	for(i = 0;ret >= 0;i++)
+        void *ctx = NULL;
+	for(i = 0;!ctx;i++)
 	{
 
 		*fname = '\0';
@@ -429,66 +492,16 @@ EXPORT void *init_capture(const char*path)
 		if(*fname == 0)
 		{
 			fprintf(stderr, "Please Attach Webcam device\n");
-			ret = -1;
 			break;
 		}
 
-		ret = configure_input(ctx, fname, &cfg);
-		if (ret < 0)
+		ctx = init_capture(fname, outPath, &cfg);
+		if (!ctx)
 		{
-			ret = -1;
 			fprintf(stderr, "Error while configuring Input %s\n",fname);
 		}
-		else
-			break;
 	}
-	if(ret < 0)
-		goto end;
 	free(fname);
-
-	stream = ctx->inputs[0].st;
-	/** Initalize framerate coming from webcam */
-	if(stream->avg_frame_rate.num && stream->avg_frame_rate.den)
-	{
-		ctx->video_avg_frame_rate.num = stream->avg_frame_rate.num;
-		ctx->video_avg_frame_rate.den = stream->avg_frame_rate.den;
-	}
-	else if(stream->r_frame_rate.num && stream->r_frame_rate.den )
-	{
-		ctx->video_avg_frame_rate.num = stream->r_frame_rate.num;
-		ctx->video_avg_frame_rate.den = stream->r_frame_rate.den;
-	}
-	else
-	{
-		fprintf(stderr, "Unable to take out fps from webcam assuming 30fps\n");
-		ctx->video_avg_frame_rate.num = 30;
-		ctx->video_avg_frame_rate.den = 1;
-
-	}
-	ctx->have_filter = 1;
-
-	ret = init_filters(ctx);
-	if(ret < 0)
-	{
-		fprintf(stderr,"unable to initialize filter\n");
-		goto end;
-	}
-
-	ret = init_encoder(ctx, path);
-	if(ret < 0)
-	{
-		printf("Error in encoder init for %s\n",path);
-		ret =-1;
-		goto end;
-	}
-
-	ctx->OutFrame = av_frame_alloc();
-end:
-	if(ret < 0)
-	{
-		stop_capture((void*)ctx);
-		return NULL;
-	}
 	return ctx;
 }
 
@@ -679,16 +692,21 @@ EXPORT int start_capture(void *actx)
 			if (packet.dts != AV_NOPTS_VALUE)
 				packet.dts -= av_rescale_q(start_time, av_time_base_q, ic->streams[0]->time_base);
 		}
-
-                //packet.dts = av_rescale_q(stWebPlay->dts, AV_TIME_BASE_Q, ic->streams[0]->time_base);
-		ret = avcodec_decode_video2(dec_ctx, input->InFrame, &got_frame, &packet);
-		if (ret < 0)
+		if(packet.stream_index == 0)
 		{
-			av_log(NULL, AV_LOG_ERROR, "Error decoding video\n");
-			goto end;
+			ret = avcodec_decode_video2(dec_ctx, input->InFrame, &got_frame, &packet);
+			if (ret < 0)
+			{
+				av_log(NULL, AV_LOG_ERROR, "Error decoding video\n");
+				goto end;
+			}
+			if(!got_frame)
+				continue;
 		}
-		if(!got_frame)
+		else
+		{
 			continue;
+		}
 
 
 		av_free_packet(&packet);
@@ -708,7 +726,14 @@ EXPORT int start_capture(void *actx)
 end:
 	return ret;
 }
-EXPORT int start_bitstream(void *actx)
+
+EXPORT int save_rtmp_stream ( char*in_stream, char* outFile)
+{
+	int ret = 0;
+	return ret;
+	
+}
+EXPORT int start_bitstream (void *actx)
 {
 	int ret = 0;
 	struct lsInput* input = NULL;
