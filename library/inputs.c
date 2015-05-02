@@ -12,7 +12,7 @@ int read_frame(struct lsInput *input,  AVPacket *pkt)
 	if(input->ic)
 	{
 		ret = av_read_frame(input->ic, pkt);
-		
+
 	}
 	else if(input->pb)
 	{
