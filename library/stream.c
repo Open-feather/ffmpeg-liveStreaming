@@ -783,7 +783,6 @@ EXPORT int set_image(void *actx,const char*path, int xpos,int ypos,int height, i
 	ret = configure_input(ctx, path, &cfg);
 	if(ret < 0)
 	{
-		av_log(NULL,AV_LOG_ERROR,"unable to configure input\n");
 		return ret;
 	}
 
@@ -791,7 +790,6 @@ EXPORT int set_image(void *actx,const char*path, int xpos,int ypos,int height, i
 	ret = configure_filter(ctx);
 	if(ret < 0)
 	{
-		av_log(NULL,AV_LOG_ERROR,"Unable to configure Filter\n");
 		return ret;
 	}
 	return ret;

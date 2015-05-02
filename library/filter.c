@@ -114,7 +114,10 @@ int configure_filter(struct liveStream *ctx)
 	avfilter_graph_free(&ctx->filter_graph);
 	ctx->filter_graph = avfilter_graph_alloc();
 	if (NULL == ctx->filter_graph)
+	{
+		av_log(NULL,AV_LOG_ERROR,"Unable to allocate Filter\n");
 		return -1;
+	}
 
 	ret = avfilter_graph_parse2(ctx->filter_graph, ctx->graph_desc.str, &inputs, &outputs);
 	if(ret < 0)

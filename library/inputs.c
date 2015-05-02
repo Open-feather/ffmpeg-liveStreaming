@@ -122,7 +122,6 @@ int configure_input(struct liveStream *ctx, const char *name, struct inputCfg *c
 	input = av_mallocz(sizeof(*ctx->inputs));
 	if (!input)
 	{
-		dinit_decoder(&ic,dec_ctx);
 		return -1;
 	}
 	if(!ctx->inputs)
@@ -159,6 +158,15 @@ int configure_input(struct liveStream *ctx, const char *name, struct inputCfg *c
 	input->st = st;
 	input->eof_reached = 0;
 	ret = av_thread_message_queue_alloc(&input->in_thread_queue,8, sizeof(AVPacket));
+	CHECK_END;
+	ret = pthread_create(&input->thread, NULL, input_thread, input);
+	if(ret)
+	{
+		ret = -1;
+		goto end;
+	}
+
+end:
 	if(ret < 0)
 	{
 		dinit_decoder(&ic,dec_ctx);
@@ -167,17 +175,6 @@ int configure_input(struct liveStream *ctx, const char *name, struct inputCfg *c
 			prev_input->next = NULL;
 		return ret;
 	}
-	ret = pthread_create(&input->thread, NULL, input_thread, input);
-	if(ret)
-	{
-		dinit_decoder(&ic,dec_ctx);
-		free(input);
-		if(prev_input)
-			prev_input->next = NULL;
-		return -1;
-	}
-
-end:
 	return ret;
 }
 

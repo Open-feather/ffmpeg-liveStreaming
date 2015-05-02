@@ -26,7 +26,7 @@ int init_decoder(AVFormatContext **pFormatCtx,const char *fname,char *fmt)
 	*pFormatCtx = avformat_alloc_context();
 	if(*pFormatCtx == NULL)
 	{
-		fprintf(stderr,"could not allocate avformat\n");
+		av_log(NULL, AV_LOG_ERROR, "could not allocate avformat\n");
 		goto end;
 		ret = -1;
 	}
@@ -36,21 +36,22 @@ int init_decoder(AVFormatContext **pFormatCtx,const char *fname,char *fmt)
 	ret = avformat_open_input(pFormatCtx, fname, inputFormat, &options);
 	if(ret < 0)
 	{
-		goto end;
+		av_log(NULL, AV_LOG_ERROR, "Unable to open Input %s\n", fname);
 		ret = -1;
+		goto end;
 	}
 
 	// get the camera stream information
 	if(avformat_find_stream_info(*pFormatCtx,NULL) < 0)   
 	{
-		fprintf(stderr,"Error in finding stream infon");
+		av_log(NULL, AV_LOG_ERROR, "Error in finding stream infon");
 		return -13;
 	}
 
 	ret = av_find_best_stream(*pFormatCtx,AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0); 
 	if (ret < 0)
 	{
-		fprintf(stderr, "Could not find video stream in camera\n");
+		av_log(NULL, AV_LOG_ERROR, "Could not find video stream in camera\n");
 		return ret;
 	}
 	st = (*pFormatCtx)->streams[ret];
@@ -60,7 +61,7 @@ int init_decoder(AVFormatContext **pFormatCtx,const char *fname,char *fmt)
 	ret = avcodec_open2(dec_ctx, dec,NULL);
 	if (ret < 0)
 	{
-		fprintf(stderr, "Could not find video stream in camera\n");
+		av_log(NULL, AV_LOG_ERROR, "Could not find video stream in camera\n");
 		goto end;
 	}
 end:
